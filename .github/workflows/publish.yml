@@ -15,6 +15,11 @@ jobs:
           fetch-depth: 0  # полный clone для тегов
 # no submodules needed
 
+      - name: Clean previous builds
+        run: |
+          # Удаляем старые артефакты, которые могли попасть в репозиторий
+          rm -rf dist build *.egg-info
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
