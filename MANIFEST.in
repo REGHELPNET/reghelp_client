@@ -1,0 +1,29 @@
+# Include documentation files
+include README.md
+include CHANGELOG.md
+include INSTALL.md
+
+# Include license
+include LICENSE
+
+# Include requirements
+include requirements.txt
+
+# Include examples  
+include basic_usage.py
+
+# Exclude development and build files
+exclude .gitignore
+exclude .github/workflows/*
+exclude *.pyc
+exclude *.pyo
+exclude *.pyd
+exclude __pycache__/*
+exclude build/*
+exclude dist/*
+exclude *.egg-info/*
+
+# Recursive excludes
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.egg-info 
