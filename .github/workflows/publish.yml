@@ -21,13 +21,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install build deps
-        working-directory: ./reghelp_client
         run: |
           python -m pip install --upgrade pip
           pip install build  # pep517/518 builder
 
       - name: Build sdist & wheel
-        working-directory: ./reghelp_client
         run: python -m build
 
       - name: Publish to PyPI
@@ -35,4 +33,4 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
-          packages-dir: reghelp_client/dist
+          packages-dir: dist
