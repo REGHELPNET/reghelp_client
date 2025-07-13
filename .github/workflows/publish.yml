@@ -27,8 +27,7 @@ jobs:
 
       - name: Build sdist & wheel
         run: |
-          rm -rf dist && mkdir dist
-          python -m build reghelp_client -o dist
+          python -m build -o dist
 
       - name: Validate distribution with twine
         run: twine check dist/*
