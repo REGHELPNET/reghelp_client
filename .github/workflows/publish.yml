@@ -33,7 +33,7 @@ jobs:
       - name: Build sdist & wheel
         run: |
           # Собираем пакет, указывая путь к подпроекту
-          python -m build reghelp_client -o dist
+          python -m build -o dist
 
       - name: Validate distribution with twine
         run: twine check dist/*
