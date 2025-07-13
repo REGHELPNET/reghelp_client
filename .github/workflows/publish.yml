@@ -25,13 +25,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install build setuptools_scm[toml] twine
 
-      - name: Validate distribution with twine
-        run: twine check dist/*
-
       - name: Build sdist & wheel
         run: |
           mkdir -p dist
           python -m build ./reghelp_client -o dist
+
+      - name: Validate distribution with twine
+        run: twine check dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
