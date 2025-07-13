@@ -151,4 +151,4 @@ exclude_lines = [
 ] 
 
 [tool.setuptools_scm]
-write_to = "reghelp_client/_version.py" 
+# version is resolved by importlib.metadata at runtime; no file generation 
