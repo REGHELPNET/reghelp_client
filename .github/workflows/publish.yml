@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: reghelp_client
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,10 +21,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Debug directory structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
+          echo "Python package contents:"
+          ls -la reghelp_client/
+          echo "pyproject.toml exists:"
+          test -f pyproject.toml && echo "YES" || echo "NO"
+
       - name: Clean previous builds
         run: |
           # Удаляем старые артефакты предыдущих сборок
-          rm -rf reghelp_client/dist reghelp_client/build reghelp_client/*.egg-info
+          rm -rf dist build *.egg-info
 
       - name: Install build deps
         run: |
@@ -30,12 +44,10 @@ jobs:
 
       - name: Build sdist & wheel
         run: |
-          cd reghelp_client
           python -m build
 
       - name: Validate distribution with twine
         run: |
-          cd reghelp_client
           twine check dist/*
 
       - name: Publish to PyPI
