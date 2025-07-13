@@ -31,12 +31,10 @@ jobs:
           pip install build setuptools_scm[toml] twine
 
       - name: Build sdist & wheel
-        working-directory: reghelp_client
         run: |
           python -m build -o dist
 
       - name: Validate distribution with twine
-        working-directory: reghelp_client
         run: twine check dist/*
 
       - name: Publish to PyPI
