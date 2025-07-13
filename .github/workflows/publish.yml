@@ -23,12 +23,15 @@ jobs:
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          pip install build  # pep517/518 builder
+          pip install build setuptools_scm[toml] twine
+
+      - name: Validate distribution with twine
+        run: twine check dist/*
 
       - name: Build sdist & wheel
         run: |
           mkdir -p dist
-          python -m build -o dist
+          python -m build ./reghelp_client -o dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
