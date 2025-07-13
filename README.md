@@ -1,7 +1,7 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![PyPI](https://img.shields.io/pypi/v/reghelp-client.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## 🇬🇧 English
@@ -42,12 +42,12 @@ async def main():
         balance = await client.get_balance()
         print(f"Balance: {balance.balance} {balance.currency}")
         
-        # Get Telegram iOS push token
+        # Create Telegram iOS push token task
         task = await client.get_push_token(
             app_name="tgiOS",
             app_device=AppDevice.IOS
         )
-        print(f"Push token: {task.token}")
+        print(f"Task created: {task.id}")
         
         # Wait for result
         result = await client.wait_for_result(task.id, "push")
