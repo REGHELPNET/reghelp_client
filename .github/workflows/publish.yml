@@ -26,8 +26,11 @@ jobs:
           pip install build  # pep517/518 builder
 
       - name: Build sdist & wheel (sub-project reghelp_client)
-        # Собираем пакет из подпапки reghelp_client и кладём артефакты в ../dist
-        run: python -m build reghelp_client -o dist
+        # Переходим в каталог пакета, собираем его и вывод кладём в ../dist
+        working-directory: reghelp_client
+        run: |
+          mkdir -p ../dist
+          python -m build . -o ../dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
