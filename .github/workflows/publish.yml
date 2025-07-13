@@ -18,7 +18,7 @@ jobs:
       - name: Clean previous builds
         run: |
           # Удаляем старые артефакты предыдущих сборок
-          rm -rf dist build *.egg-info
+          rm -rf dist reghelp_client/dist reghelp_client/build reghelp_client/*.egg-info
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -32,8 +32,8 @@ jobs:
 
       - name: Build sdist & wheel
         run: |
-          # Собираем пакет по pyproject.toml в корне
-          python -m build -o dist
+          # Собираем пакет, указывая каталог с pyproject.toml
+          python -m build reghelp_client -o dist
 
       - name: Validate distribution with twine
         run: twine check dist/*
