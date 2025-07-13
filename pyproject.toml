@@ -4,8 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reghelp-client"
-# Version managed by Git tags via *setuptools_scm*
-dynamic = ["version"]
+version = "1.0.0"
 description = "Современная асинхронная Python библиотека для работы с REGHelp Key API"
 readme = "README.md"
 license = {text = "MIT"}
@@ -149,6 +148,3 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ] 
-
-[tool.setuptools_scm]
-# version is resolved by importlib.metadata at runtime; no file generation 
