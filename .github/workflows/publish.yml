@@ -8,9 +8,6 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: reghelp_client
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,4 +52,3 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
-          packages-dir: reghelp_client/dist/
