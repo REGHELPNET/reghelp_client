@@ -16,7 +16,6 @@ jobs:
 # no submodules needed
 
       - name: Clean previous builds
-        working-directory: reghelp_client
         run: |
           # Удаляем старые артефакты предыдущих сборок
           rm -rf dist build *.egg-info
