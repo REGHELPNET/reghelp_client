@@ -6,11 +6,10 @@ Provides an asynchronous interface to work with all REGHelp services.
 
 import asyncio
 import logging
+import random
 from typing import Optional, Dict, Any, Union
-from urllib.parse import urlencode
 
 import httpx
-from pydantic import ValidationError
 
 from .models import (
     BalanceResponse,
@@ -47,6 +46,8 @@ from .exceptions import (
     TimeoutError as RegHelpTimeoutError,
 )
 
+from . import __version__ as _pkg_version  # for User-Agent header
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class RegHelpClient:
     DEFAULT_TIMEOUT = 30.0
     DEFAULT_MAX_RETRIES = 3
     DEFAULT_RETRY_DELAY = 1.0
+    DEFAULT_USER_AGENT = f"reghelp-client/{_pkg_version} (+https://github.com/REGHELPNET/reghelp_client)"
 
     def __init__(
         self,
@@ -95,6 +97,7 @@ class RegHelpClient:
                 timeout=httpx.Timeout(timeout),
                 limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
                 follow_redirects=True,
+                headers={"User-Agent": self.DEFAULT_USER_AGENT},
             )
             self._owns_http_client = True
         else:
@@ -160,9 +163,14 @@ class RegHelpClient:
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
-        
+
+        # Маскируем API-ключ в логах
+        masked_params = {
+            k: ("***" if k.lower() == "apikey" else v) for k, v in request_params.items()
+        }
+ 
         try:
-            logger.debug(f"Making request to {url} with params: {request_params}")
+            logger.debug(f"Making request to {url} with params: {masked_params}")
             
             response = await self._http_client.get(url, params=request_params)
             
@@ -172,7 +180,9 @@ class RegHelpClient:
                     data = response.json()
                     
                     # Проверяем на ошибки в ответе
-                    if data.get("status") == "error":
+                    from .models import ResponseStatus
+
+                    if data.get("status") == ResponseStatus.ERROR:
                         error_id = data.get("id") or data.get("detail", "UNKNOWN_ERROR")
                         raise self._map_error_code(error_id, response.status_code)
                     
@@ -183,7 +193,8 @@ class RegHelpClient:
             
             elif response.status_code == 429:
                 if retry_count < self.max_retries:
-                    await asyncio.sleep(self.retry_delay * (2 ** retry_count))
+                    sleep_for = self.retry_delay * (2 ** retry_count) * (1 + random.uniform(0, 0.2))
+                    await asyncio.sleep(sleep_for)
                     return await self._make_request(endpoint, params, retry_count + 1)
                 else:
                     raise RateLimitError()
@@ -205,14 +216,16 @@ class RegHelpClient:
                     
         except httpx.TimeoutException:
             if retry_count < self.max_retries:
-                await asyncio.sleep(self.retry_delay * (2 ** retry_count))
+                sleep_for = self.retry_delay * (2 ** retry_count) * (1 + random.uniform(0, 0.2))
+                await asyncio.sleep(sleep_for)
                 return await self._make_request(endpoint, params, retry_count + 1)
             else:
                 raise RegHelpTimeoutError(self.timeout)
         
         except httpx.RequestError as e:
             if retry_count < self.max_retries:
-                await asyncio.sleep(self.retry_delay * (2 ** retry_count))
+                sleep_for = self.retry_delay * (2 ** retry_count) * (1 + random.uniform(0, 0.2))
+                await asyncio.sleep(sleep_for)
                 return await self._make_request(endpoint, params, retry_count + 1)
             else:
                 raise NetworkError(f"Network error: {e}", original_error=e)
@@ -304,16 +317,27 @@ class RegHelpClient:
         phone_number: str,
         status: PushStatusType,
     ) -> bool:
-        """
-        Установить статус неуспешной задачи push токена (для возврата средств).
-        
-        Args:
-            task_id: ID задачи
-            phone_number: Номер телефона в формате E.164
-            status: Причина неуспеха
-            
-        Returns:
-            True если операция успешна
+        """Mark push-token task as failed (refund helper).
+
+        По протоколу REGHelp клиент может пометить задачу push-токена как
+        неуспешную (например, номер заблокирован \*BANNED\*, не пришла SMS
+        \*NOSMS\*, FLOOD-ограничение и т.д.). Сервис спишет отрицательную
+        стоимость и вернёт деньги пользователю.
+
+        Parameters
+        ----------
+        task_id : str
+            Идентификатор задачи, полученный при ``get_push_token``.
+        phone_number : str
+            Номер телефона в формате E.164, к которому пытались привязать токен.
+        status : PushStatusType
+            Причина неуспеха (``NOSMS``, ``FLOOD``, ``BANNED``, ``2FA``).
+
+        Returns
+        -------
+        bool
+            ``True`` – если сервис принял запрос и инициировал возврат
+            средств, ``False`` – в противном случае.
         """
         params = {
             "id": task_id,
@@ -627,15 +651,20 @@ class RegHelpClient:
             raise InvalidParameterError(f"Unknown service: {service}")
         
         while True:
-            current_time = asyncio.get_event_loop().time()
-            if current_time - start_time > timeout:
-                raise RegHelpTimeoutError(timeout)
-            
-            status_response = await method(task_id)
-            
-            if status_response.status == TaskStatus.DONE:
-                return status_response
-            elif status_response.status == TaskStatus.ERROR:
-                raise RegHelpError(f"Task failed: {status_response.message}")
-            
-            await asyncio.sleep(poll_interval) 
+            try:
+                current_time = asyncio.get_event_loop().time()
+                if current_time - start_time > timeout:
+                    raise RegHelpTimeoutError(timeout)
+
+                status_response = await method(task_id)
+
+                if status_response.status == TaskStatus.DONE:
+                    return status_response
+                elif status_response.status == TaskStatus.ERROR:
+                    raise RegHelpError(f"Task failed: {status_response.message}")
+
+                await asyncio.sleep(poll_interval)
+
+            except asyncio.CancelledError:
+                logger.warning("wait_for_result was cancelled – stopping polling loop")
+                raise 

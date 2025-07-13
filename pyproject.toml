@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reghelp-client"
-version = "1.0.0"
+# Version managed by Git tags via *setuptools_scm*
+dynamic = ["version"]
 description = "Современная асинхронная Python библиотека для работы с REGHelp Key API"
 readme = "README.md"
 license = {text = "MIT"}
@@ -148,3 +149,6 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ] 
+
+[tool.setuptools_scm]
+write_to = "reghelp_client/_version.py" 

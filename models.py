@@ -9,6 +9,14 @@ from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, HttpUrl
 
 
+# --- New unified response status ---
+class ResponseStatus(str, Enum):
+    """Top-level API call result (non-task)."""
+
+    SUCCESS = "success"
+    ERROR = "error"
+
+
 class TaskStatus(str, Enum):
     """Task statuses."""
     WAIT = "wait"
@@ -47,9 +55,12 @@ class PushStatusType(str, Enum):
 
 
 # Base response models
+
+
 class BaseResponse(BaseModel):
-    """Base API response model."""
-    status: str = Field(..., description="Статус ответа")
+    """Base API response model with unified *success/error* status."""
+
+    status: ResponseStatus = Field(..., description="Статус ответа (success / error)")
 
 
 class BalanceResponse(BaseResponse):
