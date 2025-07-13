@@ -26,10 +26,9 @@ jobs:
           pip install build setuptools_scm[toml] twine
 
       - name: Build sdist & wheel
-        working-directory: reghelp_client
         run: |
-          rm -rf ../dist && mkdir ../dist
-          python -m build . -o ../dist
+          rm -rf dist && mkdir dist
+          python -m build reghelp_client -o dist
 
       - name: Validate distribution with twine
         run: twine check dist/*
