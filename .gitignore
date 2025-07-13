@@ -1,0 +1,38 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Packaging / distribution
+build/
+dist/
+*.egg-info/
+*.whl
+
+# Test & type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+*.log
+
+# IDE / Editor config
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Other
+*.tmp
+*.bak 
