@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    env:
+      PROJECT_DIR: reghelp_client
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,16 +21,18 @@ jobs:
           python-version: "3.12"
 
       - name: Install build deps
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
           python -m pip install --upgrade pip
           pip install build  # pep517/518 builder
 
       - name: Build sdist & wheel
-        run: python -m build reghelp_client
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: python -m build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
-          packages-dir: dist
+          packages-dir: ${{ env.PROJECT_DIR }}/dist
