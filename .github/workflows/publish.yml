@@ -16,9 +16,10 @@ jobs:
 # no submodules needed
 
       - name: Clean previous builds
+        working-directory: reghelp_client
         run: |
           # Удаляем старые артефакты предыдущих сборок
-          rm -rf dist reghelp_client/dist reghelp_client/build reghelp_client/*.egg-info
+          rm -rf dist build *.egg-info
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -31,11 +32,12 @@ jobs:
           pip install build setuptools_scm[toml] twine
 
       - name: Build sdist & wheel
+        working-directory: reghelp_client
         run: |
-          # Собираем пакет, указывая каталог с pyproject.toml
-          python -m build reghelp_client -o dist
+          python -m build -o dist
 
       - name: Validate distribution with twine
+        working-directory: reghelp_client
         run: twine check dist/*
 
       - name: Publish to PyPI
@@ -43,4 +45,4 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
-          packages-dir: dist
+          packages-dir: reghelp_client/dist
