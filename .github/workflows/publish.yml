@@ -8,14 +8,10 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: reghelp_client
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # полный clone для тегов
-# no submodules needed
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -25,19 +21,21 @@ jobs:
       - name: Clean previous builds
         run: |
           # Удаляем старые артефакты предыдущих сборок
-          rm -rf dist build *.egg-info
+          rm -rf reghelp_client/dist reghelp_client/build reghelp_client/*.egg-info
 
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
-          pip install build setuptools_scm[toml] twine
+          pip install build twine
 
       - name: Build sdist & wheel
         run: |
+          cd reghelp_client
           python -m build
 
       - name: Validate distribution with twine
         run: |
+          cd reghelp_client
           twine check dist/*
 
       - name: Publish to PyPI
