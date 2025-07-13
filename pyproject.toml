@@ -72,7 +72,7 @@ docs = [
 "Documentation" = "https://docs.reghelp.net/"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["reghelp_client"]
 include = ["reghelp_client*"]
 exclude = ["tests*"]
 

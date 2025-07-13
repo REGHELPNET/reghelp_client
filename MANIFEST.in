@@ -12,6 +12,9 @@ include requirements.txt
 # Include examples  
 include basic_usage.py
 
+# Include Python package
+recursive-include reghelp_client *.py
+
 # Exclude development and build files
 exclude .gitignore
 exclude .github/workflows/*
