@@ -25,10 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install build  # pep517/518 builder
 
-      - name: Build sdist & wheel (sub-project reghelp_client)
+      - name: Build sdist & wheel
         run: |
           mkdir -p dist
-          python -m build reghelp_client -o dist
+          python -m build -o dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
