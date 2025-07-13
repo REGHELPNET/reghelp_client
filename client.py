@@ -46,7 +46,13 @@ from .exceptions import (
     TimeoutError as RegHelpTimeoutError,
 )
 
-from . import __version__ as _pkg_version  # for User-Agent header
+# Avoid circular import: get version via importlib.metadata directly
+try:
+    from importlib.metadata import version as _metadata_version
+
+    _pkg_version = _metadata_version("reghelp-client")
+except Exception:  # pragma: no cover – fallback for dev
+    _pkg_version = "0.0.0"
 
 
 logger = logging.getLogger(__name__)
