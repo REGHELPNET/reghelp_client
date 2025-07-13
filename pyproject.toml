@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm"]
+requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "reghelp-client"
 version = "1.1.4"
 description = "Современная асинхронная Python библиотека для работы с REGHelp Key API"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "REGHelp Team", email = "support@reghelp.net"}
 ]
@@ -30,7 +30,6 @@ keywords = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -73,7 +72,9 @@ docs = [
 "Documentation" = "https://docs.reghelp.net/"
 
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["reghelp_client*"]
+exclude = ["tests*"]
 
 [tool.black]
 line-length = 100

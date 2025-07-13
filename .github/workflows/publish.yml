@@ -8,22 +8,24 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    # no extra env
+    defaults:
+      run:
+        working-directory: reghelp_client
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # полный clone для тегов
 # no submodules needed
 
-      - name: Clean previous builds
-        run: |
-          # Удаляем старые артефакты предыдущих сборок
-          rm -rf dist build *.egg-info
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
+
+      - name: Clean previous builds
+        run: |
+          # Удаляем старые артефакты предыдущих сборок
+          rm -rf dist build *.egg-info
 
       - name: Install build deps
         run: |
@@ -32,14 +34,15 @@ jobs:
 
       - name: Build sdist & wheel
         run: |
-          python -m build -o dist
+          python -m build
 
       - name: Validate distribution with twine
-        run: twine check dist/*
+        run: |
+          twine check dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
-          packages-dir: reghelp_client/dist
+          packages-dir: reghelp_client/dist/
