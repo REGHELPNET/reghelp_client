@@ -24,7 +24,7 @@ jobs:
           pip install build  # pep517/518 builder
 
       - name: Build sdist & wheel
-        run: python -m build
+        run: python -m build reghelp_client
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.8
