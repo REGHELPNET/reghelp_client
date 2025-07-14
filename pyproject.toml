@@ -7,7 +7,7 @@ name = "reghelp-client"
 version = "1.1.5"
 description = "Современная асинхронная Python библиотека для работы с REGHelp Key API"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 authors = [
     {name = "REGHelp Team", email = "support@reghelp.net"}
 ]
