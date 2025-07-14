@@ -19,6 +19,15 @@
 - Убраны конфликты между setup.py и pyproject.toml
 - Исправлены пути в GitHub Actions workflow
 
+## [1.1.5] - 2025-07-14
+
+### Fixed
+- Исправлена ошибка сборки: wheel без полей Name/Version (требовалась setuptools>=61)
+
+### Changed
+- Обновлена минимальная версия setuptools до 61.0 в pyproject.toml
+- Версия пакета увеличена до 1.1.5
+
 ## [1.0.0] - 2025-01-12
 
 ### Added
