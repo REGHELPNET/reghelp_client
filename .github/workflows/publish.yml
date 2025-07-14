@@ -22,16 +22,19 @@ jobs:
         run: |
           echo "Current directory:"
           pwd
-          echo "Directory contents:"
+          echo "Root directory contents:"
           ls -la
-          echo "Python package contents:"
+          echo "reghelp_client directory contents:"
           ls -la reghelp_client/
-          echo "pyproject.toml exists:"
-          test -f pyproject.toml && echo "YES" || echo "NO"
+          echo "Python package contents:"
+          ls -la reghelp_client/reghelp_client/
+          echo "pyproject.toml exists in reghelp_client/:"
+          test -f reghelp_client/pyproject.toml && echo "YES" || echo "NO"
 
       - name: Clean previous builds
         run: |
           # Удаляем старые артефакты предыдущих сборок
+          cd reghelp_client
           rm -rf dist build *.egg-info
 
       - name: Install build deps
@@ -41,10 +44,12 @@ jobs:
 
       - name: Build sdist & wheel
         run: |
+          cd reghelp_client
           python -m build
 
       - name: Validate distribution with twine
         run: |
+          cd reghelp_client
           twine check dist/*
 
       - name: Publish to PyPI
@@ -52,3 +57,4 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
+          packages-dir: reghelp_client/dist/

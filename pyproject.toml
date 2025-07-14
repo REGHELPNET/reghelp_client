@@ -71,10 +71,12 @@ docs = [
 "Source" = "https://github.com/REGHELPNET/reghelp_client"
 "Documentation" = "https://docs.reghelp.net/"
 
-[tool.setuptools.packages.find]
-where = ["reghelp_client"]
-include = ["reghelp_client*"]
-exclude = ["tests*"]
+[tool.setuptools]
+packages = ["reghelp_client"]
+package-dir = {"reghelp_client" = "reghelp_client"}
+
+[tool.setuptools.package-data]
+reghelp_client = ["py.typed"]
 
 [tool.black]
 line-length = 100
