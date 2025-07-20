@@ -33,6 +33,7 @@ from .models import (
     RecaptchaMobileRequest,
     TurnstileRequest,
     VoipRequest,
+    IntegrityTokenType,
 )
 from .exceptions import (
     RegHelpError,
@@ -423,8 +424,10 @@ class RegHelpClient:
         app_name: str,
         app_device: AppDevice,
         nonce: str,
+        *,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        token_type: Optional[IntegrityTokenType] = None,
     ) -> TokenResponse:
         """
         Получить Google Play Integrity токен.
@@ -444,6 +447,12 @@ class RegHelpClient:
             "appDevice": app_device.value,
             "nonce": nonce,
         }
+
+        # Optional type parameter for standard Integrity tokens (type=std)
+        if token_type is not None:
+            params["type"] = (
+                token_type.value if isinstance(token_type, IntegrityTokenType) else str(token_type)
+            )
         
         if ref:
             params["ref"] = ref

@@ -15,6 +15,10 @@ from .models import (
     EmailStatusResponse,
     TurnstileStatusResponse,
     RecaptchaMobileStatusResponse,
+    IntegrityStatusResponse,
+    VoipStatusResponse,
+    IntegrityTokenType,
+    AppDevice,
 )
 from .exceptions import (
     RegHelpError,
@@ -27,7 +31,7 @@ from .exceptions import (
     UnauthorizedError,
 )
 
-__version__ = "1.1.5"
+__version__ = "1.2.0"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
@@ -38,6 +42,10 @@ __all__ = [
     "EmailStatusResponse",
     "TurnstileStatusResponse",
     "RecaptchaMobileStatusResponse",
+    "IntegrityStatusResponse",
+    "VoipStatusResponse",
+    "IntegrityTokenType",
+    "AppDevice",
     "RegHelpError",
     "RateLimitError",
     "ServiceDisabledError", 

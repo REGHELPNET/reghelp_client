@@ -1,8 +1,24 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.1.5-green.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+---
+
+## 📑 Table of contents / Содержание
+
+1. [Features](#-features)
+2. [Installation](#-installation)
+3. [Quick start](#-quick-start)
+4. [What's new](#-whats-new-in-120)
+5. [Environment variables](#-environment-variables)
+6. [Testing](#-testing)
+7. [Contributing](#-contributing)
+8. [FAQ](#-faq)
+9. [Changelog](#-changelog)
+
+---
 
 ## 🇬🇧 English
 
@@ -17,6 +33,13 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Async context-manager** for automatic resource management.
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
+
+### 🆕 What's new in 1.2.0
+
+* **Standard Integrity tokens** – request them via `get_integrity_token(..., token_type="std")`.
+* **IntegrityTokenType enum** for type-safe token type selection.
+* Public exports for `AppDevice`, `IntegrityStatusResponse`, `VoipStatusResponse`, `IntegrityTokenType` directly from package root.
+* `get_integrity_token()` now uses keyword-only parameters for new options while remaining backward compatible.
 
 ### 📦 Installation
 
@@ -72,6 +95,13 @@ if __name__ == "__main__":
 - **Context manager**: Поддержка async context manager
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
+
+### 🆕 Что нового в 1.2.0
+
+* **Стандартные Integrity-токены** — используйте параметр `token_type="std"` в методе `get_integrity_token()`.
+* Новый перечислитель **IntegrityTokenType** для строгой типизации.
+* Экспорт `AppDevice`, `IntegrityStatusResponse`, `VoipStatusResponse`, `IntegrityTokenType` из корневого пакета.
+* Сигнатура `get_integrity_token()` использует keyword-only параметры для новых опций, сохраняя совместимость с существующим кодом.
 
 ## 📦 Установка
 
@@ -441,4 +471,82 @@ MIT License. См. [LICENSE](LICENSE) для деталей.
 
 - Документация: https://reghelp.net/api-docs
 - Поддержка: support@reghelp.net
-- Issues: https://github.com/REGHELPNET/reghelp_client/issues 
+- Issues: https://github.com/REGHELPNET/reghelp_client/issues
+
+---
+
+## 🌐 Environment variables / Переменные окружения
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `REGHELP_API_KEY` | Your personal API key | `demo_123abc` |
+| `REGHELP_BASE_URL` | Override base URL if you host a private mirror | `https://api.reghelp.net` |
+| `REGHELP_TIMEOUT` | Default request timeout in seconds | `30` |
+| `REGHELP_MAX_RETRIES` | Max automatic retries on network errors | `3` |
+
+> 💡 *Tip:* you can create a `.env` file and load it with [python-dotenv](https://github.com/theskumar/python-dotenv).
+
+---
+
+## 🧪 Testing / Тестирование
+
+```bash
+# clone repo and install dev extras
+git clone https://github.com/REGHELPNET/reghelp_client.git
+cd reghelp_client
+pip install -e ".[dev]"
+
+# unit tests + coverage
+pytest -v --cov=reghelp_client --cov-report=term-missing
+```
+
+Additional commands:
+
+* **Formatting** – `black reghelp_client/ tests/`
+* **Linting** – `ruff check reghelp_client/ tests/ examples/`
+* **Type checking** – `mypy reghelp_client/`
+
+---
+
+## 🛠️ Contributing / Вклад
+
+1. Fork the repository and create your branch: `git checkout -b feat/my-feature`  
+2. Install dev dependencies: `pip install -e ".[dev]"`  
+3. Run `pre-commit install` to enable hooks.  
+4. Ensure tests & linters pass: `pytest && ruff check . && mypy .`  
+5. Submit a pull-request with a clear description of your changes.
+
+We follow **Conventional Commits** for commit messages and the **Black** code style.
+
+---
+
+## ❓ FAQ / Часто задаваемые вопросы
+
+<details>
+<summary>How do I increase the request timeout?</summary>
+
+```python
+client = RegHelpClient("api_key", timeout=60.0)
+```
+
+</details>
+
+<details>
+<summary>Does the client support synchronous code?</summary>
+
+No, the library is asynchronous-first. You can run it in synchronous code with `asyncio.run()`.
+
+</details>
+
+<details>
+<summary>What is the difference between `Integrity` and `SafetyNet`?</summary>
+
+`Integrity` refers to Google Play Integrity API while SafetyNet is deprecated. REGHelp supports the new Integrity API.
+
+</details>
+
+---
+
+## 🗒️ Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a complete release history. 

@@ -38,6 +38,12 @@ class EmailType(str, Enum):
     GMAIL = "gmail"
 
 
+# New Integrity token type enumeration
+class IntegrityTokenType(str, Enum):
+    """Integrity token types."""
+    STD = "std"
+
+
 class PushStatusType(str, Enum):
     """Status types for push setStatus."""
     NOSMS = "NOSMS"
@@ -163,6 +169,11 @@ class IntegrityRequest(BaseModel):
     app_name: str = Field(..., description="Имя приложения")
     app_device: AppDevice = Field(..., description="Тип устройства")
     nonce: str = Field(..., min_length=16, max_length=500, description="Nonce для integrity")
+    token_type: Optional[IntegrityTokenType] = Field(
+        None,
+        alias="type",
+        description="Тип Integrity токена. Например, 'std' для стандартных токенов.",
+    )
     ref: Optional[str] = Field(None, description="Реферальный код")
     webhook: Optional[HttpUrl] = Field(None, description="URL для webhook")
 
