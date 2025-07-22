@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Пример базового использования REGHelp Python Client.
+Basic usage example for REGHelp Python Client.
 
-Демонстрирует основные возможности библиотеки:
-- Проверка баланса
-- Получение push токенов
-- Работа с email сервисом
-- Обработка ошибок
+Demonstrates main library features:
+- Balance checking
+- Getting push tokens
+- Working with email service
+- Error handling
 """
 
 import asyncio
@@ -26,7 +26,7 @@ from reghelp_client import (
 )
 
 
-# Настройка логирования
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -35,69 +35,69 @@ logger = logging.getLogger(__name__)
 
 
 async def check_balance(client: RegHelpClient) -> None:
-    """Проверить текущий баланс аккаунта."""
+    """Check current account balance."""
     try:
         balance = await client.get_balance()
-        logger.info(f"💰 Текущий баланс: {balance.balance} {balance.currency}")
+        logger.info(f"💰 Current balance: {balance.balance} {balance.currency}")
         
         if balance.balance < 10:
-            logger.warning("⚠️ Низкий баланс! Рекомендуется пополнить аккаунт")
+            logger.warning("⚠️ Low balance! Consider topping up your account")
         
     except Exception as e:
-        logger.error(f"❌ Ошибка при получении баланса: {e}")
+        logger.error(f"❌ Error getting balance: {e}")
 
 
 async def get_telegram_push_token(client: RegHelpClient) -> Optional[str]:
-    """Получить push токен для Telegram iOS."""
+    """Get push token for Telegram iOS."""
     try:
-        logger.info("📱 Создание задачи для push токена Telegram iOS...")
+        logger.info("📱 Creating task for Telegram iOS push token...")
         
-        # Создать задачу
+        # Create task
         task = await client.get_push_token(
             app_name="tgiOS",
             app_device=AppDevice.IOS,
             ref="demo_example"
         )
         
-        logger.info(f"✅ Задача создана: {task.id} (цена: {task.price} руб.)")
+        logger.info(f"✅ Task created: {task.id} (price: {task.price} RUB)")
         
-        # Ждать результат с автоматическим polling
+        # Wait for result with automatic polling
         result = await client.wait_for_result(
             task_id=task.id,
             service="push",
-            timeout=60.0,  # 1 минута
-            poll_interval=3.0  # проверять каждые 3 секунды
+            timeout=60.0,  # 1 minute
+            poll_interval=3.0  # check every 3 seconds
         )
         
         if result.token:
-            logger.info(f"🎉 Push токен получен: {result.token[:50]}...")
+            logger.info(f"🎉 Push token received: {result.token[:50]}...")
             return result.token
         else:
-            logger.error("❌ Токен не получен")
+            logger.error("❌ Token not received")
             return None
             
     except Exception as e:
-        logger.error(f"❌ Ошибка при получении push токена: {e}")
+        logger.error(f"❌ Error getting push token: {e}")
         return None
 
 
 async def get_temporary_email(client: RegHelpClient) -> Optional[str]:
-    """Получить временный email адрес."""
+    """Get temporary email address."""
     try:
-        logger.info("📧 Получение временного email адреса...")
+        logger.info("📧 Getting temporary email address...")
         
-        # Получить email
+        # Get email
         email_task = await client.get_email(
             app_name="tg",
             app_device=AppDevice.IOS,
-            phone="+15551234567",  # Тестовый номер
+            phone="+15551234567",  # Test number
             email_type=EmailType.ICLOUD
         )
         
-        logger.info(f"✅ Email получен: {email_task.email}")
+        logger.info(f"✅ Email received: {email_task.email}")
         
-        # Можно ждать код подтверждения
-        logger.info("⏳ Ожидание кода подтверждения (30 сек)...")
+        # Can wait for verification code
+        logger.info("⏳ Waiting for verification code (30 sec)...")
         
         try:
             email_result = await client.wait_for_result(
@@ -107,23 +107,23 @@ async def get_temporary_email(client: RegHelpClient) -> Optional[str]:
             )
             
             if email_result.code:
-                logger.info(f"📬 Код подтверждения: {email_result.code}")
+                logger.info(f"📬 Verification code: {email_result.code}")
                 return email_result.code
                 
         except asyncio.TimeoutError:
-            logger.info("⏰ Код подтверждения не получен за 30 секунд")
+            logger.info("⏰ Verification code not received within 30 seconds")
         
         return email_task.email
         
     except Exception as e:
-        logger.error(f"❌ Ошибка при получении email: {e}")
+        logger.error(f"❌ Error getting email: {e}")
         return None
 
 
 async def demonstrate_turnstile(client: RegHelpClient) -> Optional[str]:
-    """Демонстрация решения Turnstile задачи."""
+    """Demonstrate Turnstile challenge solving."""
     try:
-        logger.info("🔐 Решение Cloudflare Turnstile...")
+        logger.info("🔐 Solving Cloudflare Turnstile...")
         
         task = await client.get_turnstile_token(
             url="https://demo.example.com",
@@ -131,9 +131,9 @@ async def demonstrate_turnstile(client: RegHelpClient) -> Optional[str]:
             action="demo",
         )
         
-        logger.info(f"✅ Задача Turnstile создана: {task.id}")
+        logger.info(f"✅ Turnstile task created: {task.id}")
         
-        # Ждать результат
+        # Wait for result
         result = await client.wait_for_result(
             task_id=task.id,
             service="turnstile",
@@ -141,49 +141,49 @@ async def demonstrate_turnstile(client: RegHelpClient) -> Optional[str]:
         )
         
         if result.token:
-            logger.info(f"🎉 Turnstile токен: {result.token[:50]}...")
+            logger.info(f"🎉 Turnstile token: {result.token[:50]}...")
             return result.token
         
     except Exception as e:
-        logger.error(f"❌ Ошибка Turnstile: {e}")
+        logger.error(f"❌ Turnstile error: {e}")
         return None
 
 
 async def demonstrate_error_handling(client: RegHelpClient) -> None:
-    """Демонстрация обработки различных ошибок."""
-    logger.info("🚨 Демонстрация обработки ошибок...")
+    """Demonstrate various error handling."""
+    logger.info("🚨 Demonstrating error handling...")
     
     try:
-        # Попытка получить статус несуществующей задачи
+        # Try to get status of non-existent task
         await client.get_push_status("invalid_task_id")
         
     except UnauthorizedError:
-        logger.error("🔑 Ошибка авторизации: неверный API ключ")
+        logger.error("🔑 Authorization error: invalid API key")
     except RateLimitError:
-        logger.error("🚦 Превышен лимит запросов (50/сек)")
+        logger.error("🚦 Rate limit exceeded (50/sec)")
     except RegHelpError as e:
-        logger.error(f"🔴 API ошибка: {e}")
+        logger.error(f"🔴 API error: {e}")
     except Exception as e:
-        logger.error(f"💥 Неожиданная ошибка: {e}")
+        logger.error(f"💥 Unexpected error: {e}")
 
 
 async def parallel_tasks_example(client: RegHelpClient) -> None:
-    """Пример параллельного выполнения задач."""
-    logger.info("🔄 Демонстрация параллельного выполнения...")
+    """Example of parallel task execution."""
+    logger.info("🔄 Demonstrating parallel execution...")
     
     try:
-        # Создать несколько задач параллельно
+        # Create multiple tasks in parallel
         tasks = await asyncio.gather(*[
             client.get_push_token("tgiOS", AppDevice.IOS, ref=f"parallel_{i}")
             for i in range(3)
         ], return_exceptions=True)
         
-        # Фильтровать успешные задачи
+        # Filter successful tasks
         successful_tasks = [task for task in tasks if not isinstance(task, Exception)]
         
-        logger.info(f"✅ Создано {len(successful_tasks)} задач параллельно")
+        logger.info(f"✅ Created {len(successful_tasks)} tasks in parallel")
         
-        # Можно ждать результаты параллельно
+        # Can wait for results in parallel
         if successful_tasks:
             results = await asyncio.gather(*[
                 client.get_push_status(task.id) 
@@ -191,41 +191,41 @@ async def parallel_tasks_example(client: RegHelpClient) -> None:
                 if hasattr(task, 'id')
             ], return_exceptions=True)
             
-            logger.info(f"📊 Получено {len(results)} статусов")
+            logger.info(f"📊 Received {len(results)} statuses")
         
     except Exception as e:
-        logger.error(f"❌ Ошибка параллельного выполнения: {e}")
+        logger.error(f"❌ Parallel execution error: {e}")
 
 
 async def main() -> None:
-    """Главная функция с демонстрацией всех возможностей."""
-    # Получить API ключ из переменной окружения
+    """Main function demonstrating all capabilities."""
+    # Get API key from environment variable
     api_key = os.getenv("REGHELP_API_KEY")
     if not api_key:
-        logger.error("❌ Не найден API ключ в переменной REGHELP_API_KEY")
-        logger.info("💡 Установите переменную: export REGHELP_API_KEY=your_api_key")
+        logger.error("❌ API key not found in REGHELP_API_KEY environment variable")
+        logger.info("💡 Set the variable: export REGHELP_API_KEY=your_api_key")
         return
     
-    logger.info("🚀 Запуск демонстрации REGHelp Python Client")
+    logger.info("🚀 Starting REGHelp Python Client demonstration")
     
-    # Использование context manager для автоматического закрытия соединений
+    # Use context manager for automatic connection cleanup
     async with RegHelpClient(
         api_key=api_key,
         timeout=30.0,
         max_retries=3
     ) as client:
         
-        # Проверить доступность API
+        # Check API availability
         if await client.health_check():
-            logger.info("✅ API доступен")
+            logger.info("✅ API is available")
         else:
-            logger.error("❌ API недоступен")
+            logger.error("❌ API is unavailable")
             return
         
-        # Демонстрация различных функций
+        # Demonstrate various functions
         await check_balance(client)
         
-        # Только если баланс позволяет
+        # Only if balance allows
         balance = await client.get_balance()
         if balance.balance > 1:
             await get_telegram_push_token(client)
@@ -233,14 +233,14 @@ async def main() -> None:
             await demonstrate_turnstile(client)
             await parallel_tasks_example(client)
         else:
-            logger.warning("⚠️ Недостаточно средств для демонстрации платных функций")
+            logger.warning("⚠️ Insufficient funds to demonstrate paid functions")
         
-        # Демонстрация обработки ошибок
+        # Demonstrate error handling
         await demonstrate_error_handling(client)
     
-    logger.info("🏁 Демонстрация завершена")
+    logger.info("🏁 Demonstration completed")
 
 
 if __name__ == "__main__":
-    # Запуск асинхронной функции
+    # Run async function
     asyncio.run(main()) 

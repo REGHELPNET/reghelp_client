@@ -74,15 +74,15 @@ class RegHelpClient:
         http_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """
-        Инициализация клиента.
+        Initialize the client.
         
         Args:
-            api_key: API ключ для аутентификации
-            base_url: Базовый URL API (по умолчанию https://api.reghelp.net)
-            timeout: Таймаут запросов в секундах
-            max_retries: Максимальное количество повторов при ошибках
-            retry_delay: Задержка между повторами в секундах
-            http_client: Пользовательский HTTP клиент (опционально)
+            api_key: API key for authentication
+            base_url: Base API URL (default https://api.reghelp.net)
+            timeout: Request timeout in seconds
+            max_retries: Maximum number of retries on errors
+            retry_delay: Delay between retries in seconds
+            http_client: Custom HTTP client (optional)
         """
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
@@ -90,7 +90,7 @@ class RegHelpClient:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         
-        # Создаем HTTP клиент если не передан
+        # Create HTTP client if not provided
         if http_client is None:
             self._http_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(timeout),
@@ -111,16 +111,16 @@ class RegHelpClient:
         await self.close()
 
     async def close(self) -> None:
-        """Закрыть HTTP клиент."""
+        """Close HTTP client."""
         if self._owns_http_client:
             await self._http_client.aclose()
 
     def _build_url(self, endpoint: str) -> str:
-        """Построить полный URL для endpoint."""
+        """Build full URL for endpoint."""
         return f"{self.base_url}/{endpoint.lstrip('/')}"
 
     def _build_params(self, **kwargs) -> Dict[str, str]:
-        """Построить параметры запроса с API ключом."""
+        """Build request parameters with API key."""
         params = {"apiKey": self.api_key}
         for key, value in kwargs.items():
             if value is not None:
@@ -131,7 +131,7 @@ class RegHelpClient:
         return params
 
     def _map_error_code(self, error_id: str, status_code: int) -> RegHelpError:
-        """Маппинг кодов ошибок в соответствующие исключения."""
+        """Map error codes to corresponding exceptions."""
         if status_code == 401:
             return UnauthorizedError()
         
@@ -157,7 +157,7 @@ class RegHelpClient:
         retry_count: int = 0
     ) -> Dict[str, Any]:
         """
-        Выполнить HTTP запрос с обработкой ошибок и retry логикой.
+        Execute HTTP request with error handling and retry logic.
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
@@ -167,12 +167,12 @@ class RegHelpClient:
             
             response = await self._http_client.get(url, params=request_params)
             
-            # Проверяем статус код
+            # Check status code
             if response.status_code == 200:
                 try:
                     data = response.json()
                     
-                    # Проверяем на ошибки в ответе
+                    # Check for errors in response
                     if data.get("status") == "error":
                         error_id = data.get("id") or data.get("detail", "UNKNOWN_ERROR")
                         raise self._map_error_code(error_id, response.status_code)
@@ -193,7 +193,7 @@ class RegHelpClient:
                 raise UnauthorizedError()
             
             else:
-                # Пытаемся получить детали ошибки из ответа
+                # Try to get error details from response
                 try:
                     error_data = response.json()
                     error_id = error_data.get("id") or error_data.get("detail", "HTTP_ERROR")
@@ -221,13 +221,13 @@ class RegHelpClient:
     # Health check
     async def health_check(self) -> bool:
         """
-        Проверка доступности API.
+        Check API availability.
         
         Returns:
-            True если API доступен
+            True if API is available
         """
         try:
-            # Health endpoint не требует API ключа
+            # Health endpoint doesn't require API key
             url = self._build_url("/health")
             response = await self._http_client.get(url)
             return response.status_code == 200
@@ -237,10 +237,10 @@ class RegHelpClient:
     # Balance operations
     async def get_balance(self) -> BalanceResponse:
         """
-        Получить текущий баланс аккаунта.
+        Get current account balance.
         
         Returns:
-            Информация о балансе
+            Balance information
         """
         data = await self._make_request("/balance")
         return BalanceResponse(**data)
@@ -256,18 +256,18 @@ class RegHelpClient:
         webhook: Optional[str] = None,
     ) -> TokenResponse:
         """
-        Создать задачу для получения push токена.
+        Create task for getting push token.
         
         Args:
-            app_name: Имя приложения (tg, tg_beta, tg_x, tgiOS)
-            app_device: Тип устройства (iOS/Android)
-            app_version: Версия приложения (опционально)
-            app_build: Номер сборки (опционально)
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            app_name: Application name (tg, tg_beta, tg_x, tgiOS)
+            app_device: Device type (iOS/Android)
+            app_version: Application version (optional)
+            app_build: Build number (optional)
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация о созданной задаче
+            Information about created task
         """
         params = {
             "appName": app_name,
@@ -288,13 +288,13 @@ class RegHelpClient:
 
     async def get_push_status(self, task_id: str) -> PushStatusResponse:
         """
-        Получить статус задачи push токена.
+        Get push token task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи
+            Task status
         """
         data = await self._make_request("/push/getStatus", {"id": task_id})
         return PushStatusResponse(**data)
@@ -306,15 +306,15 @@ class RegHelpClient:
         status: PushStatusType,
     ) -> bool:
         """
-        Установить статус неуспешной задачи push токена (для возврата средств).
+        Set status of failed push token task (for refund).
         
         Args:
-            task_id: ID задачи
-            phone_number: Номер телефона в формате E.164
-            status: Причина неуспеха
+            task_id: Task ID
+            phone_number: Phone number in E.164 format
+            status: Failure reason
             
         Returns:
-            True если операция успешна
+            True if operation successful
         """
         params = {
             "id": task_id,
@@ -333,15 +333,15 @@ class RegHelpClient:
         webhook: Optional[str] = None,
     ) -> TokenResponse:
         """
-        Создать задачу для получения VoIP push токена.
+        Create task for getting VoIP push token.
         
         Args:
-            app_name: Имя приложения
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            app_name: Application name
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация о созданной задаче
+            Information about created task
         """
         params = {"appName": app_name}
         
@@ -355,13 +355,13 @@ class RegHelpClient:
 
     async def get_voip_status(self, task_id: str) -> VoipStatusResponse:
         """
-        Получить статус задачи VoIP push токена.
+        Get VoIP push token task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи
+            Task status
         """
         data = await self._make_request("/pushVoip/getStatus", {"id": task_id})
         return VoipStatusResponse(**data)
@@ -377,18 +377,18 @@ class RegHelpClient:
         webhook: Optional[str] = None,
     ) -> EmailGetResponse:
         """
-        Получить временный email адрес.
+        Get temporary email address.
         
         Args:
-            app_name: Имя приложения
-            app_device: Тип устройства
-            phone: Номер телефона в формате E.164
-            email_type: Тип email провайдера (icloud/gmail)
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            app_name: Application name
+            app_device: Device type
+            phone: Phone number in E.164 format
+            email_type: Email provider type (icloud/gmail)
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация об email адресе
+            Information about email address
         """
         params = {
             "appName": app_name,
@@ -407,13 +407,13 @@ class RegHelpClient:
 
     async def get_email_status(self, task_id: str) -> EmailStatusResponse:
         """
-        Получить статус задачи email.
+        Get email task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи с кодом подтверждения
+            Task status with verification code
         """
         data = await self._make_request("/email/getStatus", {"id": task_id})
         return EmailStatusResponse(**data)
@@ -430,17 +430,17 @@ class RegHelpClient:
         token_type: Optional[IntegrityTokenType] = None,
     ) -> TokenResponse:
         """
-        Получить Google Play Integrity токен.
+        Get Google Play Integrity token.
         
         Args:
-            app_name: Имя приложения
-            app_device: Тип устройства
-            nonce: Nonce строка (URL-safe Base64, до 200 символов)
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            app_name: Application name
+            app_device: Device type
+            nonce: Nonce string (URL-safe Base64, up to 200 characters)
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация о созданной задаче
+            Information about created task
         """
         params = {
             "appName": app_name,
@@ -464,13 +464,13 @@ class RegHelpClient:
 
     async def get_integrity_status(self, task_id: str) -> IntegrityStatusResponse:
         """
-        Получить статус задачи integrity токена.
+        Get integrity token task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи
+            Task status
         """
         data = await self._make_request("/integrity/getStatus", {"id": task_id})
         return IntegrityStatusResponse(**data)
@@ -487,19 +487,19 @@ class RegHelpClient:
         webhook: Optional[str] = None,
     ) -> TokenResponse:
         """
-        Решить мобильную reCAPTCHA задачу.
+        Solve mobile reCAPTCHA challenge.
         
         Args:
-            app_name: Имя приложения
-            app_device: Тип устройства
-            app_key: Ключ reCAPTCHA
-            app_action: Действие (например, "login")
-            proxy: Конфигурация прокси
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            app_name: Application name
+            app_device: Device type
+            app_key: reCAPTCHA key
+            app_action: Action (e.g., "login")
+            proxy: Proxy configuration
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация о созданной задаче
+            Information about created task
         """
         params = {
             "appName": app_name,
@@ -519,13 +519,13 @@ class RegHelpClient:
 
     async def get_recaptcha_mobile_status(self, task_id: str) -> RecaptchaMobileStatusResponse:
         """
-        Получить статус задачи Recaptcha Mobile.
+        Get Recaptcha Mobile task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи
+            Task status
         """
         data = await self._make_request("/RecaptchaMobile/getStatus", {"id": task_id})
         return RecaptchaMobileStatusResponse(**data)
@@ -542,19 +542,19 @@ class RegHelpClient:
         webhook: Optional[str] = None,
     ) -> TokenResponse:
         """
-        Решить Cloudflare Turnstile задачу.
+        Solve Cloudflare Turnstile challenge.
         
         Args:
-            url: URL страницы с виджетом
-            site_key: Site key Turnstile
-            action: Ожидаемое действие (опционально)
-            cdata: Пользовательские данные (опционально)
-            proxy: Прокси в формате scheme://host:port (опционально)
-            ref: Реферальная метка (опционально)
-            webhook: URL для webhook уведомлений (опционально)
+            url: Page URL with widget
+            site_key: Turnstile site key
+            action: Expected action (optional)
+            cdata: Custom data (optional)
+            proxy: Proxy in scheme://host:port format (optional)
+            ref: Referral tag (optional)
+            webhook: URL for webhook notifications (optional)
             
         Returns:
-            Информация о созданной задаче
+            Information about created task
         """
         params = {
             "url": url,
@@ -577,13 +577,13 @@ class RegHelpClient:
 
     async def get_turnstile_status(self, task_id: str) -> TurnstileStatusResponse:
         """
-        Получить статус задачи Turnstile.
+        Get Turnstile task status.
         
         Args:
-            task_id: ID задачи
+            task_id: Task ID
             
         Returns:
-            Статус задачи
+            Task status
         """
         data = await self._make_request("/turnstile/getStatus", {"id": task_id})
         return TurnstileStatusResponse(**data)
@@ -604,24 +604,24 @@ class RegHelpClient:
         VoipStatusResponse,
     ]:
         """
-        Ожидать выполнения задачи с автоматическим polling.
+        Wait for task completion with automatic polling.
         
         Args:
-            task_id: ID задачи
-            service: Тип сервиса ('push', 'email', 'integrity', 'recaptcha', 'turnstile', 'voip')
-            timeout: Максимальное время ожидания в секундах
-            poll_interval: Интервал между проверками в секундах
+            task_id: Task ID
+            service: Service type ('push', 'email', 'integrity', 'recaptcha', 'turnstile', 'voip')
+            timeout: Maximum wait time in seconds
+            poll_interval: Interval between checks in seconds
             
         Returns:
-            Результат задачи
+            Task result
             
         Raises:
-            TimeoutError: Если задача не выполнилась за указанное время
-            RegHelpError: При других ошибках
+            TimeoutError: If task didn't complete within specified time
+            RegHelpError: For other errors
         """
         start_time = asyncio.get_event_loop().time()
         
-        # Маппинг сервисов на методы получения статуса
+        # Map services to status getting methods
         status_methods = {
             "push": self.get_push_status,
             "email": self.get_email_status,
