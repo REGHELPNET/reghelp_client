@@ -130,7 +130,7 @@ class RegHelpClient:
                     params[key] = str(value)
         return params
 
-    def _map_error_code(self, error_id: str, status_code: int) -> RegHelpError:
+    def _map_error_code(self, error_id: str, status_code: int, task_id: Optional[str] = None) -> RegHelpError:
         """Map error codes to corresponding exceptions."""
         if status_code == 401:
             return UnauthorizedError()
@@ -142,7 +142,11 @@ class RegHelpClient:
         elif error_id == "MAINTENANCE_MODE":
             return MaintenanceModeError()
         elif error_id == "TASK_NOT_FOUND":
-            return TaskNotFoundError("unknown")
+            if task_id:
+                return TaskNotFoundError(task_id)
+            else:
+                # If task_id is unknown, use generic error
+                return RegHelpError("Task not found", status_code=status_code)
         elif error_id == "INVALID_PARAM":
             return InvalidParameterError()
         elif error_id == "EXTERNAL_ERROR":
@@ -154,7 +158,8 @@ class RegHelpClient:
         self, 
         endpoint: str, 
         params: Optional[Dict[str, Any]] = None,
-        retry_count: int = 0
+        retry_count: int = 0,
+        task_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute HTTP request with error handling and retry logic.
@@ -175,7 +180,7 @@ class RegHelpClient:
                     # Check for errors in response
                     if data.get("status") == "error":
                         error_id = data.get("id") or data.get("detail", "UNKNOWN_ERROR")
-                        raise self._map_error_code(error_id, response.status_code)
+                        raise self._map_error_code(error_id, response.status_code, task_id)
                     
                     return data
                     
@@ -197,7 +202,7 @@ class RegHelpClient:
                 try:
                     error_data = response.json()
                     error_id = error_data.get("id") or error_data.get("detail", "HTTP_ERROR")
-                    raise self._map_error_code(error_id, response.status_code)
+                    raise self._map_error_code(error_id, response.status_code, task_id)
                 except ValueError:
                     raise RegHelpError(
                         f"HTTP {response.status_code}: {response.text}",
@@ -207,14 +212,14 @@ class RegHelpClient:
         except httpx.TimeoutException:
             if retry_count < self.max_retries:
                 await asyncio.sleep(self.retry_delay * (2 ** retry_count))
-                return await self._make_request(endpoint, params, retry_count + 1)
+                return await self._make_request(endpoint, params, retry_count + 1, task_id)
             else:
                 raise RegHelpTimeoutError(self.timeout)
         
         except httpx.RequestError as e:
             if retry_count < self.max_retries:
                 await asyncio.sleep(self.retry_delay * (2 ** retry_count))
-                return await self._make_request(endpoint, params, retry_count + 1)
+                return await self._make_request(endpoint, params, retry_count + 1, task_id)
             else:
                 raise NetworkError(f"Network error: {e}", original_error=e)
 
@@ -296,7 +301,7 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/push/getStatus", {"id": task_id})
+        data = await self._make_request("/push/getStatus", {"id": task_id}, task_id=task_id)
         return PushStatusResponse(**data)
 
     async def set_push_status(
@@ -363,7 +368,7 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/pushVoip/getStatus", {"id": task_id})
+        data = await self._make_request("/pushVoip/getStatus", {"id": task_id}, task_id=task_id)
         return VoipStatusResponse(**data)
 
     # Email operations
@@ -415,7 +420,7 @@ class RegHelpClient:
         Returns:
             Task status with verification code
         """
-        data = await self._make_request("/email/getStatus", {"id": task_id})
+        data = await self._make_request("/email/getStatus", {"id": task_id}, task_id=task_id)
         return EmailStatusResponse(**data)
 
     # Integrity operations
@@ -472,7 +477,7 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/integrity/getStatus", {"id": task_id})
+        data = await self._make_request("/integrity/getStatus", {"id": task_id}, task_id=task_id)
         return IntegrityStatusResponse(**data)
 
     # Recaptcha Mobile operations
@@ -527,7 +532,7 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/RecaptchaMobile/getStatus", {"id": task_id})
+        data = await self._make_request("/RecaptchaMobile/getStatus", {"id": task_id}, task_id=task_id)
         return RecaptchaMobileStatusResponse(**data)
 
     # Turnstile operations
@@ -585,7 +590,7 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/turnstile/getStatus", {"id": task_id})
+        data = await self._make_request("/turnstile/getStatus", {"id": task_id}, task_id=task_id)
         return TurnstileStatusResponse(**data)
 
     # Utility methods

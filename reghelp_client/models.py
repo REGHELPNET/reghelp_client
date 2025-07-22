@@ -131,7 +131,7 @@ class ProxyConfig(BaseModel):
     password: Optional[str] = Field(None, max_length=256, description="Proxy password")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Преобразовать в словарь для параметров запроса."""
+        """Convert to dictionary for request parameters."""
         result = {
             "proxyType": self.type.value,
             "proxyAddress": self.address,

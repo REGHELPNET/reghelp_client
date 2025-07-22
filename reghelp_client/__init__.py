@@ -31,7 +31,7 @@ from .exceptions import (
     UnauthorizedError,
 )
 
-__version__ = "1.2.1"
+__version__ = "1.2.3"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",

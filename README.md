@@ -1,7 +1,7 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.2.1-green.svg)
+![Version](https://img.shields.io/badge/version-1.2.3-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ---
@@ -11,7 +11,7 @@
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-121)
+4. [What's new](#-whats-new-in-123)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -34,7 +34,16 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.2.1
+### 🆕 What's new in 1.2.3
+
+* **Improved error handling for TASK_NOT_FOUND** – when task ID is known, returns TaskNotFoundError with specific ID; when unknown, returns generic RegHelpError instead of confusing "unknown" message.
+
+### What was new in 1.2.2
+
+* **Fixed TaskNotFoundError** – now shows real task ID instead of "unknown" when task is not found.
+* **Improved error handling** – better error reporting for status methods with correct task context.
+
+### What was new in 1.2.1
 
 * **Increased proxy configuration limits** – proxy address can now be up to 255 characters, login up to 128 characters, and password up to 256 characters.
 * **Enhanced ProxyConfig validation** – improved support for longer domain names and authentication credentials.
@@ -101,7 +110,16 @@ if __name__ == "__main__":
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
 
-### 🆕 Что нового в 1.2.1
+### 🆕 Что нового в 1.2.3
+
+* **Улучшена обработка ошибки TASK_NOT_FOUND** — когда ID задачи известен, возвращается TaskNotFoundError с конкретным ID; когда неизвестен, возвращается общая RegHelpError вместо запутывающего сообщения "unknown".
+
+### Что было нового в 1.2.2
+
+* **Исправлена ошибка TaskNotFoundError** — теперь показывает реальный ID задачи вместо "unknown" когда задача не найдена.
+* **Улучшена обработка ошибок** — лучшая отчетность об ошибках для методов статуса с правильным контекстом задачи.
+
+### Что было нового в 1.2.1
 
 * **Увеличенные лимиты для прокси конфигурации** — адрес прокси теперь может содержать до 255 символов, логин до 128 символов, а пароль до 256 символов.
 * **Улучшенная валидация ProxyConfig** — расширенная поддержка длинных доменных имен и данных аутентификации.
