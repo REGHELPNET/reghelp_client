@@ -5,14 +5,17 @@ Contains Pydantic models for typing API requests and responses.
 """
 
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field, HttpUrl
 
 
 class TaskStatus(str, Enum):
     """Task statuses."""
+
     WAIT = "wait"
-    PENDING = "pending" 
+    PENDING = "pending"
+    SUBMITTED = "submitted"
     RUNNING = "running"
     DONE = "done"
     ERROR = "error"
@@ -20,6 +23,7 @@ class TaskStatus(str, Enum):
 
 class ProxyType(str, Enum):
     """Proxy types."""
+
     HTTP = "http"
     HTTPS = "https"
     SOCKS4 = "socks4"
@@ -28,12 +32,14 @@ class ProxyType(str, Enum):
 
 class AppDevice(str, Enum):
     """Supported devices."""
+
     IOS = "iOS"
     ANDROID = "Android"
 
 
 class EmailType(str, Enum):
     """Email provider types."""
+
     ICLOUD = "icloud"
     GMAIL = "gmail"
 
@@ -41,13 +47,15 @@ class EmailType(str, Enum):
 # New Integrity token type enumeration
 class IntegrityTokenType(str, Enum):
     """Integrity token types."""
+
     STD = "std"
 
 
 class PushStatusType(str, Enum):
     """Status types for push setStatus."""
+
     NOSMS = "NOSMS"
-    FLOOD = "FLOOD" 
+    FLOOD = "FLOOD"
     BANNED = "BANNED"
     TWO_FA = "2FA"
 
@@ -55,17 +63,20 @@ class PushStatusType(str, Enum):
 # Base response models
 class BaseResponse(BaseModel):
     """Base API response model."""
+
     status: str = Field(..., description="Response status")
 
 
 class BalanceResponse(BaseResponse):
     """Response for balance request."""
+
     balance: float = Field(..., description="Current balance")
     currency: str = Field(..., description="Balance currency")
 
 
 class TokenResponse(BaseResponse):
     """Response for token request."""
+
     id: str = Field(..., description="Task ID")
     service: str = Field(..., description="Service code")
     product: str = Field(..., description="Product type")
@@ -75,6 +86,7 @@ class TokenResponse(BaseResponse):
 
 class BaseStatusResponse(BaseModel):
     """Base model for task status."""
+
     id: str = Field(..., description="Task ID")
     status: TaskStatus = Field(..., description="Task status")
     message: Optional[str] = Field(None, description="Error or status message")
@@ -82,11 +94,13 @@ class BaseStatusResponse(BaseModel):
 
 class PushStatusResponse(BaseStatusResponse):
     """Status of push token task."""
+
     token: Optional[str] = Field(None, description="Push token")
 
 
 class EmailGetResponse(BaseResponse):
     """Response for getting email request."""
+
     id: str = Field(..., description="Task ID")
     email: str = Field(..., description="Email address")
     service: str = Field(..., description="Email service type")
@@ -97,33 +111,39 @@ class EmailGetResponse(BaseResponse):
 
 class EmailStatusResponse(BaseStatusResponse):
     """Status of email task."""
+
     email: Optional[str] = Field(None, description="Email address")
     code: Optional[str] = Field(None, description="Verification code")
 
 
 class IntegrityStatusResponse(BaseStatusResponse):
     """Status of integrity token task."""
+
     token: Optional[str] = Field(None, description="Integrity token")
 
 
 class RecaptchaMobileStatusResponse(BaseStatusResponse):
     """Status of Recaptcha Mobile task."""
+
     token: Optional[str] = Field(None, description="Recaptcha token")
 
 
 class TurnstileStatusResponse(BaseStatusResponse):
     """Status of Turnstile task."""
+
     token: Optional[str] = Field(None, description="Turnstile token")
 
 
 class VoipStatusResponse(BaseStatusResponse):
     """Status of VoIP push task."""
+
     token: Optional[str] = Field(None, description="VoIP push token")
 
 
 # Request parameter models
 class ProxyConfig(BaseModel):
     """Proxy configuration."""
+
     type: ProxyType = Field(..., description="Proxy type")
     address: str = Field(..., min_length=1, max_length=255, description="Proxy address")
     port: int = Field(..., ge=1, le=65535, description="Proxy port")
@@ -146,6 +166,7 @@ class ProxyConfig(BaseModel):
 
 class PushTokenRequest(BaseModel):
     """Push token request parameters."""
+
     app_name: str = Field(..., description="Application name")
     app_device: AppDevice = Field(..., description="Device type")
     app_version: Optional[str] = Field(None, description="Application version")
@@ -156,6 +177,7 @@ class PushTokenRequest(BaseModel):
 
 class EmailRequest(BaseModel):
     """Email request parameters."""
+
     app_name: str = Field(..., description="Application name")
     app_device: AppDevice = Field(..., description="Device type")
     phone: str = Field(..., description="Phone number in E.164 format")
@@ -166,6 +188,7 @@ class EmailRequest(BaseModel):
 
 class IntegrityRequest(BaseModel):
     """Integrity token request parameters."""
+
     app_name: str = Field(..., description="Application name")
     app_device: AppDevice = Field(..., description="Device type")
     nonce: str = Field(..., min_length=16, max_length=500, description="Nonce for integrity")
@@ -180,6 +203,7 @@ class IntegrityRequest(BaseModel):
 
 class RecaptchaMobileRequest(BaseModel):
     """Recaptcha Mobile token request parameters."""
+
     app_name: str = Field(..., description="Application name")
     app_device: AppDevice = Field(..., description="Device type")
     app_key: str = Field(..., description="reCAPTCHA key")
@@ -191,6 +215,7 @@ class RecaptchaMobileRequest(BaseModel):
 
 class TurnstileRequest(BaseModel):
     """Turnstile token request parameters."""
+
     url: HttpUrl = Field(..., description="Page URL with widget")
     site_key: str = Field(..., description="Turnstile site key")
     action: Optional[str] = Field(None, description="Expected action")
@@ -204,6 +229,7 @@ class TurnstileRequest(BaseModel):
 
 class VoipRequest(BaseModel):
     """VoIP push token request parameters."""
+
     app_name: str = Field(..., description="Application name")
     ref: Optional[str] = Field(None, description="Referral code")
-    webhook: Optional[HttpUrl] = Field(None, description="Webhook URL") 
+    webhook: Optional[HttpUrl] = Field(None, description="Webhook URL")

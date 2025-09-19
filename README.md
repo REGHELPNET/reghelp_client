@@ -1,7 +1,7 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.2.3-green.svg)
+![Version](https://img.shields.io/badge/version-1.2.4-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ---
@@ -11,7 +11,7 @@
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-123)
+4. [What's new](#-whats-new-in-124)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -29,12 +29,20 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Asynchronous first** – full `async`/`await` support powered by `httpx`.
 * **Type-safe** – strict typing with Pydantic data models.
 * **Retries with exponential back-off** built-in.
-* **Smart rate-limit handling** (50 requests per second).
+* **Smart rate-limit handling** (provider-configurable).
 * **Async context-manager** for automatic resource management.
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.2.3
+### 🆕 What's new in 1.2.4
+
+* Added `submitted` task status support in client models
+* Masked `apiKey` in debug logs
+* Preserved `task_id` across 429 retries for better error context
+* Generalized rate-limit messaging (provider-configurable limits)
+* Quick start fixed to not read token from create response
+
+### What was new in 1.2.3
 
 * **Improved error handling for TASK_NOT_FOUND** – when task ID is known, returns TaskNotFoundError with specific ID; when unknown, returns generic RegHelpError instead of confusing "unknown" message.
 
@@ -84,7 +92,7 @@ async def main():
             app_name="tgiOS",
             app_device=AppDevice.IOS
         )
-        print(f"Push token: {task.token}")
+        print(f"Task created: {task.id}")
         
         # Wait for result
         result = await client.wait_for_result(task.id, "push")
@@ -105,7 +113,7 @@ if __name__ == "__main__":
 - **Асинхронность**: Полная поддержка async/await
 - **Типизация**: Полная типизация с Pydantic моделями
 - **Retry логика**: Автоматические повторы с exponential backoff
-- **Rate limiting**: Умная обработка rate limits (50 rps)
+- **Rate limiting**: Умная обработка rate limits (динамические лимиты провайдера)
 - **Context manager**: Поддержка async context manager
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
@@ -384,7 +392,7 @@ from reghelp_client import (
 try:
     task = await client.get_push_token("tgiOS", AppDevice.IOS)
 except RateLimitError:
-    print("Превышен лимит запросов (50/сек)")
+    print("Превышен лимит запросов")
 except UnauthorizedError:
     print("Неверный API ключ")
 except TaskNotFoundError as e:

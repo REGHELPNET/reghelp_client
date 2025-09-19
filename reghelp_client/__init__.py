@@ -6,36 +6,36 @@ Supports all services: Push, Email, Integrity, Turnstile, VoIP Push and Recaptch
 """
 
 from .client import RegHelpClient
-from .models import (
-    BalanceResponse,
-    TokenResponse,
-    TaskStatus,
-    EmailGetResponse,
-    PushStatusResponse,
-    EmailStatusResponse,
-    TurnstileStatusResponse,
-    RecaptchaMobileStatusResponse,
-    IntegrityStatusResponse,
-    VoipStatusResponse,
-    IntegrityTokenType,
-    AppDevice,
-)
 from .exceptions import (
-    RegHelpError,
-    RateLimitError,
-    ServiceDisabledError,
-    MaintenanceModeError,
-    TaskNotFoundError,
-    InvalidParameterError,
     ExternalServiceError,
+    InvalidParameterError,
+    MaintenanceModeError,
+    RateLimitError,
+    RegHelpError,
+    ServiceDisabledError,
+    TaskNotFoundError,
     UnauthorizedError,
 )
+from .models import (
+    AppDevice,
+    BalanceResponse,
+    EmailGetResponse,
+    EmailStatusResponse,
+    IntegrityStatusResponse,
+    IntegrityTokenType,
+    PushStatusResponse,
+    RecaptchaMobileStatusResponse,
+    TaskStatus,
+    TokenResponse,
+    TurnstileStatusResponse,
+    VoipStatusResponse,
+)
 
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
-    "TokenResponse", 
+    "TokenResponse",
     "TaskStatus",
     "EmailGetResponse",
     "PushStatusResponse",
@@ -48,10 +48,10 @@ __all__ = [
     "AppDevice",
     "RegHelpError",
     "RateLimitError",
-    "ServiceDisabledError", 
+    "ServiceDisabledError",
     "MaintenanceModeError",
     "TaskNotFoundError",
     "InvalidParameterError",
     "ExternalServiceError",
     "UnauthorizedError",
-] 
+]

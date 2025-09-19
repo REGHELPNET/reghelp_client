@@ -6,48 +6,41 @@ Provides an asynchronous interface to work with all REGHelp services.
 
 import asyncio
 import logging
-from typing import Optional, Dict, Any, Union
-from urllib.parse import urlencode
+from typing import Any, Dict, Optional, Union
 
 import httpx
-from pydantic import ValidationError
 
-from .models import (
-    BalanceResponse,
-    TokenResponse,
-    PushStatusResponse,
-    EmailGetResponse,
-    EmailStatusResponse,
-    IntegrityStatusResponse,
-    RecaptchaMobileStatusResponse,
-    TurnstileStatusResponse,
-    VoipStatusResponse,
-    TaskStatus,
-    AppDevice,
-    EmailType,
-    PushStatusType,
-    ProxyConfig,
-    PushTokenRequest,
-    EmailRequest,
-    IntegrityRequest,
-    RecaptchaMobileRequest,
-    TurnstileRequest,
-    VoipRequest,
-    IntegrityTokenType,
+from .exceptions import (
+    ExternalServiceError,
+    InvalidParameterError,
+    MaintenanceModeError,
+    NetworkError,
+    RateLimitError,
+    RegHelpError,
+    ServiceDisabledError,
+    TaskNotFoundError,
+    UnauthorizedError,
 )
 from .exceptions import (
-    RegHelpError,
-    RateLimitError,
-    ServiceDisabledError,
-    MaintenanceModeError,
-    TaskNotFoundError,
-    InvalidParameterError,
-    ExternalServiceError,
-    UnauthorizedError,
-    NetworkError,
     TimeoutError as RegHelpTimeoutError,
 )
-
+from .models import (
+    AppDevice,
+    BalanceResponse,
+    EmailGetResponse,
+    EmailStatusResponse,
+    EmailType,
+    IntegrityStatusResponse,
+    IntegrityTokenType,
+    ProxyConfig,
+    PushStatusResponse,
+    PushStatusType,
+    RecaptchaMobileStatusResponse,
+    TaskStatus,
+    TokenResponse,
+    TurnstileStatusResponse,
+    VoipStatusResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +48,10 @@ logger = logging.getLogger(__name__)
 class RegHelpClient:
     """
     Asynchronous client for working with the REGHelp API.
-    
+
     Supports all services: Push, Email, Integrity, Turnstile, VoIP Push, Recaptcha Mobile.
     """
-    
+
     DEFAULT_BASE_URL = "https://api.reghelp.net"
     DEFAULT_TIMEOUT = 30.0
     DEFAULT_MAX_RETRIES = 3
@@ -75,7 +68,7 @@ class RegHelpClient:
     ) -> None:
         """
         Initialize the client.
-        
+
         Args:
             api_key: API key for authentication
             base_url: Base API URL (default https://api.reghelp.net)
@@ -85,11 +78,11 @@ class RegHelpClient:
             http_client: Custom HTTP client (optional)
         """
         self.api_key = api_key
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        
+
         # Create HTTP client if not provided
         if http_client is None:
             self._http_client = httpx.AsyncClient(
@@ -130,11 +123,13 @@ class RegHelpClient:
                     params[key] = str(value)
         return params
 
-    def _map_error_code(self, error_id: str, status_code: int, task_id: Optional[str] = None) -> RegHelpError:
+    def _map_error_code(
+        self, error_id: str, status_code: int, task_id: Optional[str] = None
+    ) -> RegHelpError:
         """Map error codes to corresponding exceptions."""
         if status_code == 401:
             return UnauthorizedError()
-        
+
         if error_id == "RATE_LIMIT":
             return RateLimitError()
         elif error_id == "SERVICE_DISABLED":
@@ -155,79 +150,88 @@ class RegHelpClient:
             return RegHelpError(f"Unknown error: {error_id}", status_code=status_code)
 
     async def _make_request(
-        self, 
-        endpoint: str, 
+        self,
+        endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         retry_count: int = 0,
-        task_id: Optional[str] = None
+        task_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute HTTP request with error handling and retry logic.
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
-        
+
         try:
-            logger.debug(f"Making request to {url} with params: {request_params}")
-            
+            # Mask apiKey in logs
+            masked_params = dict(request_params)
+            if "apiKey" in masked_params:
+                api_key_value = masked_params["apiKey"]
+                if isinstance(api_key_value, str) and len(api_key_value) > 8:
+                    masked_params["apiKey"] = f"{api_key_value[:4]}***{api_key_value[-4:]}"
+                else:
+                    masked_params["apiKey"] = "***"
+
+            logger.debug(f"Making request to {url} with params: {masked_params}")
+
             response = await self._http_client.get(url, params=request_params)
-            
+
             # Check status code
             if response.status_code == 200:
                 try:
                     data = response.json()
-                    
+
                     # Check for errors in response
                     if data.get("status") == "error":
                         error_id = data.get("id") or data.get("detail", "UNKNOWN_ERROR")
                         raise self._map_error_code(error_id, response.status_code, task_id)
-                    
+
                     return data
-                    
+
                 except ValueError as e:
-                    raise RegHelpError(f"Invalid JSON response: {e}")
-            
+                    raise RegHelpError(f"Invalid JSON response: {e}") from e
+
             elif response.status_code == 429:
                 if retry_count < self.max_retries:
-                    await asyncio.sleep(self.retry_delay * (2 ** retry_count))
-                    return await self._make_request(endpoint, params, retry_count + 1)
+                    await asyncio.sleep(self.retry_delay * (2**retry_count))
+                    return await self._make_request(endpoint, params, retry_count + 1, task_id)
                 else:
                     raise RateLimitError()
-            
+
             elif response.status_code == 401:
                 raise UnauthorizedError()
-            
+
             else:
                 # Try to get error details from response
                 try:
                     error_data = response.json()
                     error_id = error_data.get("id") or error_data.get("detail", "HTTP_ERROR")
                     raise self._map_error_code(error_id, response.status_code, task_id)
-                except ValueError:
+                except ValueError as e:
                     raise RegHelpError(
                         f"HTTP {response.status_code}: {response.text}",
-                        status_code=response.status_code
-                    )
-                    
-        except httpx.TimeoutException:
+                        status_code=response.status_code,
+                    ) from e
+
+        except httpx.TimeoutException as e:
             if retry_count < self.max_retries:
-                await asyncio.sleep(self.retry_delay * (2 ** retry_count))
+                await asyncio.sleep(self.retry_delay * (2**retry_count))
                 return await self._make_request(endpoint, params, retry_count + 1, task_id)
             else:
-                raise RegHelpTimeoutError(self.timeout)
-        
+                raise RegHelpTimeoutError(self.timeout) from e
+
         except httpx.RequestError as e:
             if retry_count < self.max_retries:
-                await asyncio.sleep(self.retry_delay * (2 ** retry_count))
+                await asyncio.sleep(self.retry_delay * (2**retry_count))
                 return await self._make_request(endpoint, params, retry_count + 1, task_id)
             else:
-                raise NetworkError(f"Network error: {e}", original_error=e)
+                raise NetworkError(f"Network error: {e}", original_error=e) from e
 
     # Health check
     async def health_check(self) -> bool:
         """
         Check API availability.
-        
+
         Returns:
             True if API is available
         """
@@ -243,7 +247,7 @@ class RegHelpClient:
     async def get_balance(self) -> BalanceResponse:
         """
         Get current account balance.
-        
+
         Returns:
             Balance information
         """
@@ -262,7 +266,7 @@ class RegHelpClient:
     ) -> TokenResponse:
         """
         Create task for getting push token.
-        
+
         Args:
             app_name: Application name (tg, tg_beta, tg_x, tgiOS)
             app_device: Device type (iOS/Android)
@@ -270,7 +274,7 @@ class RegHelpClient:
             app_build: Build number (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about created task
         """
@@ -278,7 +282,7 @@ class RegHelpClient:
             "appName": app_name,
             "appDevice": app_device.value,
         }
-        
+
         if app_version:
             params["appVersion"] = app_version
         if app_build:
@@ -287,17 +291,17 @@ class RegHelpClient:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/push/getToken", params)
         return TokenResponse(**data)
 
     async def get_push_status(self, task_id: str) -> PushStatusResponse:
         """
         Get push token task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status
         """
@@ -312,12 +316,12 @@ class RegHelpClient:
     ) -> bool:
         """
         Set status of failed push token task (for refund).
-        
+
         Args:
             task_id: Task ID
             phone_number: Phone number in E.164 format
             status: Failure reason
-            
+
         Returns:
             True if operation successful
         """
@@ -326,7 +330,7 @@ class RegHelpClient:
             "number": phone_number,
             "status": status.value,
         }
-        
+
         data = await self._make_request("/push/setStatus", params)
         return data.get("status") == "success"
 
@@ -339,32 +343,32 @@ class RegHelpClient:
     ) -> TokenResponse:
         """
         Create task for getting VoIP push token.
-        
+
         Args:
             app_name: Application name
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about created task
         """
         params = {"appName": app_name}
-        
+
         if ref:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/pushVoip/getToken", params)
         return TokenResponse(**data)
 
     async def get_voip_status(self, task_id: str) -> VoipStatusResponse:
         """
         Get VoIP push token task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status
         """
@@ -383,7 +387,7 @@ class RegHelpClient:
     ) -> EmailGetResponse:
         """
         Get temporary email address.
-        
+
         Args:
             app_name: Application name
             app_device: Device type
@@ -391,7 +395,7 @@ class RegHelpClient:
             email_type: Email provider type (icloud/gmail)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about email address
         """
@@ -401,22 +405,22 @@ class RegHelpClient:
             "phone": phone,
             "type": email_type.value,
         }
-        
+
         if ref:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/email/getEmail", params)
         return EmailGetResponse(**data)
 
     async def get_email_status(self, task_id: str) -> EmailStatusResponse:
         """
         Get email task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status with verification code
         """
@@ -436,14 +440,14 @@ class RegHelpClient:
     ) -> TokenResponse:
         """
         Get Google Play Integrity token.
-        
+
         Args:
             app_name: Application name
             app_device: Device type
             nonce: Nonce string (URL-safe Base64, up to 200 characters)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about created task
         """
@@ -458,22 +462,22 @@ class RegHelpClient:
             params["type"] = (
                 token_type.value if isinstance(token_type, IntegrityTokenType) else str(token_type)
             )
-        
+
         if ref:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/integrity/getToken", params)
         return TokenResponse(**data)
 
     async def get_integrity_status(self, task_id: str) -> IntegrityStatusResponse:
         """
         Get integrity token task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status
         """
@@ -493,7 +497,7 @@ class RegHelpClient:
     ) -> TokenResponse:
         """
         Solve mobile reCAPTCHA challenge.
-        
+
         Args:
             app_name: Application name
             app_device: Device type
@@ -502,7 +506,7 @@ class RegHelpClient:
             proxy: Proxy configuration
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about created task
         """
@@ -513,26 +517,28 @@ class RegHelpClient:
             "appAction": app_action,
             **proxy.to_dict(),
         }
-        
+
         if ref:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/RecaptchaMobile/getToken", params)
         return TokenResponse(**data)
 
     async def get_recaptcha_mobile_status(self, task_id: str) -> RecaptchaMobileStatusResponse:
         """
         Get Recaptcha Mobile task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status
         """
-        data = await self._make_request("/RecaptchaMobile/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/RecaptchaMobile/getStatus", {"id": task_id}, task_id=task_id
+        )
         return RecaptchaMobileStatusResponse(**data)
 
     # Turnstile operations
@@ -548,7 +554,7 @@ class RegHelpClient:
     ) -> TokenResponse:
         """
         Solve Cloudflare Turnstile challenge.
-        
+
         Args:
             url: Page URL with widget
             site_key: Turnstile site key
@@ -557,7 +563,7 @@ class RegHelpClient:
             proxy: Proxy in scheme://host:port format (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
-            
+
         Returns:
             Information about created task
         """
@@ -565,7 +571,7 @@ class RegHelpClient:
             "url": url,
             "siteKey": site_key,
         }
-        
+
         if action:
             params["action"] = action
         if cdata:
@@ -576,17 +582,17 @@ class RegHelpClient:
             params["ref"] = ref
         if webhook:
             params["webHook"] = webhook
-            
+
         data = await self._make_request("/turnstile/getToken", params)
         return TokenResponse(**data)
 
     async def get_turnstile_status(self, task_id: str) -> TurnstileStatusResponse:
         """
         Get Turnstile task status.
-        
+
         Args:
             task_id: Task ID
-            
+
         Returns:
             Task status
         """
@@ -610,22 +616,22 @@ class RegHelpClient:
     ]:
         """
         Wait for task completion with automatic polling.
-        
+
         Args:
             task_id: Task ID
             service: Service type ('push', 'email', 'integrity', 'recaptcha', 'turnstile', 'voip')
             timeout: Maximum wait time in seconds
             poll_interval: Interval between checks in seconds
-            
+
         Returns:
             Task result
-            
+
         Raises:
             TimeoutError: If task didn't complete within specified time
             RegHelpError: For other errors
         """
         start_time = asyncio.get_event_loop().time()
-        
+
         # Map services to status getting methods
         status_methods = {
             "push": self.get_push_status,
@@ -635,21 +641,21 @@ class RegHelpClient:
             "turnstile": self.get_turnstile_status,
             "voip": self.get_voip_status,
         }
-        
+
         method = status_methods.get(service)
         if not method:
             raise InvalidParameterError(f"Unknown service: {service}")
-        
+
         while True:
             current_time = asyncio.get_event_loop().time()
             if current_time - start_time > timeout:
                 raise RegHelpTimeoutError(timeout)
-            
+
             status_response = await method(task_id)
-            
+
             if status_response.status == TaskStatus.DONE:
                 return status_response
             elif status_response.status == TaskStatus.ERROR:
                 raise RegHelpError(f"Task failed: {status_response.message}")
-            
-            await asyncio.sleep(poll_interval) 
+
+            await asyncio.sleep(poll_interval)
