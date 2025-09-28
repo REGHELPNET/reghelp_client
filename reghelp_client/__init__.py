@@ -23,6 +23,8 @@ from .models import (
     EmailStatusResponse,
     IntegrityStatusResponse,
     IntegrityTokenType,
+    ProxyConfig,
+    ProxyType,
     PushStatusResponse,
     RecaptchaMobileStatusResponse,
     TaskStatus,
@@ -31,12 +33,14 @@ from .models import (
     VoipStatusResponse,
 )
 
-__version__ = "1.2.4"
+__version__ = "1.3.0"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
     "TokenResponse",
     "TaskStatus",
+    "ProxyType",
+    "ProxyConfig",
     "EmailGetResponse",
     "PushStatusResponse",
     "EmailStatusResponse",

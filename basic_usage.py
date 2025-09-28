@@ -121,6 +121,8 @@ async def demonstrate_turnstile(client: RegHelpClient) -> Optional[str]:
             url="https://demo.example.com",
             site_key="0x4AAAA-demo-site-key",
             action="demo",
+            actor="demo_bot",
+            scope="cf-turnstile",
         )
 
         logger.info(f"✅ Turnstile task created: {task.id}")

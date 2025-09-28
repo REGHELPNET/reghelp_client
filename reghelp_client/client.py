@@ -155,6 +155,8 @@ class RegHelpClient:
         params: Optional[Dict[str, Any]] = None,
         retry_count: int = 0,
         task_id: Optional[str] = None,
+        *,
+        allow_error_status: bool = False,
     ) -> Dict[str, Any]:
         """
         Execute HTTP request with error handling and retry logic.
@@ -182,7 +184,7 @@ class RegHelpClient:
                     data = response.json()
 
                     # Check for errors in response
-                    if data.get("status") == "error":
+                    if data.get("status") == "error" and not allow_error_status:
                         error_id = data.get("id") or data.get("detail", "UNKNOWN_ERROR")
                         raise self._map_error_code(error_id, response.status_code, task_id)
 
@@ -194,7 +196,13 @@ class RegHelpClient:
             elif response.status_code == 429:
                 if retry_count < self.max_retries:
                     await asyncio.sleep(self.retry_delay * (2**retry_count))
-                    return await self._make_request(endpoint, params, retry_count + 1, task_id)
+                    return await self._make_request(
+                        endpoint,
+                        params,
+                        retry_count + 1,
+                        task_id,
+                        allow_error_status=allow_error_status,
+                    )
                 else:
                     raise RateLimitError()
 
@@ -216,14 +224,26 @@ class RegHelpClient:
         except httpx.TimeoutException as e:
             if retry_count < self.max_retries:
                 await asyncio.sleep(self.retry_delay * (2**retry_count))
-                return await self._make_request(endpoint, params, retry_count + 1, task_id)
+                return await self._make_request(
+                    endpoint,
+                    params,
+                    retry_count + 1,
+                    task_id,
+                    allow_error_status=allow_error_status,
+                )
             else:
                 raise RegHelpTimeoutError(self.timeout) from e
 
         except httpx.RequestError as e:
             if retry_count < self.max_retries:
                 await asyncio.sleep(self.retry_delay * (2**retry_count))
-                return await self._make_request(endpoint, params, retry_count + 1, task_id)
+                return await self._make_request(
+                    endpoint,
+                    params,
+                    retry_count + 1,
+                    task_id,
+                    allow_error_status=allow_error_status,
+                )
             else:
                 raise NetworkError(f"Network error: {e}", original_error=e) from e
 
@@ -305,7 +325,12 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/push/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/push/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
         return PushStatusResponse(**data)
 
     async def set_push_status(
@@ -331,8 +356,22 @@ class RegHelpClient:
             "status": status.value,
         }
 
-        data = await self._make_request("/push/setStatus", params)
-        return data.get("status") == "success"
+        data = await self._make_request(
+            "/push/setStatus",
+            params,
+            allow_error_status=True,
+        )
+        if data.get("status") == "success" and "balance" in data:
+            return True
+
+        if data.get("status") == "error" and "balance" in data:
+            return True
+
+        if data.get("status") == "success":
+            if data.get("price") is not None and data.get("balance") is not None:
+                return True
+
+        return False
 
     # VoIP Push operations
     async def get_voip_token(
@@ -372,7 +411,12 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/pushVoip/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/pushVoip/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
         return VoipStatusResponse(**data)
 
     # Email operations
@@ -424,7 +468,12 @@ class RegHelpClient:
         Returns:
             Task status with verification code
         """
-        data = await self._make_request("/email/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/email/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
         return EmailStatusResponse(**data)
 
     # Integrity operations
@@ -481,7 +530,12 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/integrity/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/integrity/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
         return IntegrityStatusResponse(**data)
 
     # Recaptcha Mobile operations
@@ -537,7 +591,10 @@ class RegHelpClient:
             Task status
         """
         data = await self._make_request(
-            "/RecaptchaMobile/getStatus", {"id": task_id}, task_id=task_id
+            "/RecaptchaMobile/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
         )
         return RecaptchaMobileStatusResponse(**data)
 
@@ -549,6 +606,8 @@ class RegHelpClient:
         action: Optional[str] = None,
         cdata: Optional[str] = None,
         proxy: Optional[str] = None,
+        actor: Optional[str] = None,
+        scope: Optional[str] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
     ) -> TokenResponse:
@@ -561,6 +620,8 @@ class RegHelpClient:
             action: Expected action (optional)
             cdata: Custom data (optional)
             proxy: Proxy in scheme://host:port format (optional)
+            actor: Actor identifier (optional)
+            scope: Scope value (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
 
@@ -578,6 +639,10 @@ class RegHelpClient:
             params["cdata"] = cdata
         if proxy:
             params["proxy"] = proxy
+        if actor:
+            params["actor"] = actor
+        if scope:
+            params["scope"] = scope
         if ref:
             params["ref"] = ref
         if webhook:
@@ -596,7 +661,12 @@ class RegHelpClient:
         Returns:
             Task status
         """
-        data = await self._make_request("/turnstile/getStatus", {"id": task_id}, task_id=task_id)
+        data = await self._make_request(
+            "/turnstile/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
         return TurnstileStatusResponse(**data)
 
     # Utility methods
@@ -624,7 +694,7 @@ class RegHelpClient:
             poll_interval: Interval between checks in seconds
 
         Returns:
-            Task result
+            Task result (even if status=ERROR)
 
         Raises:
             TimeoutError: If task didn't complete within specified time
@@ -653,9 +723,7 @@ class RegHelpClient:
 
             status_response = await method(task_id)
 
-            if status_response.status == TaskStatus.DONE:
+            if status_response.status in {TaskStatus.DONE, TaskStatus.ERROR}:
                 return status_response
-            elif status_response.status == TaskStatus.ERROR:
-                raise RegHelpError(f"Task failed: {status_response.message}")
 
             await asyncio.sleep(poll_interval)
