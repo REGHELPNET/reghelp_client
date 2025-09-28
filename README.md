@@ -1,7 +1,7 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.2.4-green.svg)
+![Version](https://img.shields.io/badge/version-1.3.1-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ---
@@ -11,7 +11,7 @@
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-124)
+4. [What's new](#-whats-new-in-130)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -34,34 +34,41 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.2.4
+### 🆕 What's new in 1.3.0
 
-* Added `submitted` task status support in client models
-* Masked `apiKey` in debug logs
-* Preserved `task_id` across 429 retries for better error context
-* Generalized rate-limit messaging (provider-configurable limits)
-* Quick start fixed to not read token from create response
+* `wait_for_result` now returns task data even when `status="error"`, so your code can decide how to handle failures.
+* All `get_*_status` methods return the full API payload instead of raising when `status="error"`.
+* `set_push_status` treats HTTP 200 responses with a valid balance as success, even if `status="error"`.
+* `get_turnstile_token` accepts new `actor` and `scope` parameters and forwards them to the API.
+
+### What was new in 1.2.4
+
+* Added support for the `submitted` task status in client models.
+* Masked `apiKey` in debug logs.
+* Preserved `task_id` across 429 retries for better diagnostics.
+* Generalized rate-limit messaging (limits are provider-controlled).
+* Updated documentation and examples (no longer read tokens from create responses).
 
 ### What was new in 1.2.3
 
-* **Improved error handling for TASK_NOT_FOUND** – when task ID is known, returns TaskNotFoundError with specific ID; when unknown, returns generic RegHelpError instead of confusing "unknown" message.
+* **Improved error handling for `TASK_NOT_FOUND`** – when task ID is known, it returns `TaskNotFoundError` with the specific ID; otherwise it raises a generic `RegHelpError` instead of the confusing "unknown" message.
 
 ### What was new in 1.2.2
 
-* **Fixed TaskNotFoundError** – now shows real task ID instead of "unknown" when task is not found.
-* **Improved error handling** – better error reporting for status methods with correct task context.
+* **Fixed `TaskNotFoundError`** – now shows the real task ID instead of "unknown" when a task is not found.
+* **Improved error handling** – better reporting for status methods with correct task context.
 
 ### What was new in 1.2.1
 
-* **Increased proxy configuration limits** – proxy address can now be up to 255 characters, login up to 128 characters, and password up to 256 characters.
-* **Enhanced ProxyConfig validation** – improved support for longer domain names and authentication credentials.
+* **Increased proxy configuration limits** – proxy address up to 255 characters, login up to 128, password up to 256.
+* **Enhanced `ProxyConfig` validation** – improved support for long domain names and credentials.
 
 ### What was new in 1.2.0
 
 * **Standard Integrity tokens** – request them via `get_integrity_token(..., token_type="std")`.
-* **IntegrityTokenType enum** for type-safe token type selection.
-* Public exports for `AppDevice`, `IntegrityStatusResponse`, `VoipStatusResponse`, `IntegrityTokenType` directly from package root.
-* `get_integrity_token()` now uses keyword-only parameters for new options while remaining backward compatible.
+* **`IntegrityTokenType` enum** for type-safe token selection.
+* Public exports for `AppDevice`, `IntegrityStatusResponse`, `VoipStatusResponse`, `IntegrityTokenType` from the package root.
+* `get_integrity_token()` switched to keyword-only parameters for new options while staying backward compatible.
 
 ### 📦 Installation
 
