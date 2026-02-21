@@ -1,7 +1,7 @@
 # REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.1-green.svg)
+![Version](https://img.shields.io/badge/version-1.3.3-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ---
@@ -11,7 +11,7 @@
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-130)
+4. [What's new](#-whats-new-in-133)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -34,7 +34,12 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.3.0
+### 🆕 What's new in 1.3.3
+
+* `proxy` parameter in `get_recaptcha_mobile_token()` and `RecaptchaMobileRequest` model is now **optional** (`None` by default). Proxy parameters are only included in the request when explicitly provided.
+* Added `processing` status to `TaskStatus` enum — Recaptcha Mobile API returns this status while a task is being executed.
+
+### What was new in 1.3.1
 
 * `wait_for_result` now returns task data even when `status="error"`, so your code can decide how to handle failures.
 * All `get_*_status` methods return the full API payload instead of raising when `status="error"`.
@@ -125,7 +130,12 @@ if __name__ == "__main__":
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
 
-### 🆕 Что нового в 1.3.0
+### 🆕 Что нового в 1.3.3
+
+* Параметр `proxy` в `get_recaptcha_mobile_token()` и модели `RecaptchaMobileRequest` стал **необязательным** (по умолчанию `None`). Прокси-параметры добавляются в запрос только при явной передаче.
+* Добавлен статус `processing` в перечисление `TaskStatus` — API Recaptcha Mobile возвращает этот статус в процессе выполнения задачи.
+
+### Что было нового в 1.3.1
 
 * `wait_for_result` возвращает объект статуса даже при `status="error"`, позволяя клиентскому коду принять решение самостоятельно.
 * Методы `get_*_status` больше не выбрасывают исключение при `status="error"`, а отдают полный ответ API.
@@ -315,7 +325,15 @@ print(f"Integrity токен: {result.token}")
 ```python
 from reghelp_client import ProxyConfig, ProxyType
 
-# Настройка прокси (поддерживает длинные значения)
+# Решить recaptcha без прокси (proxy необязателен)
+recaptcha_task = await client.get_recaptcha_mobile_token(
+    app_name="org.telegram.messenger",
+    app_device=AppDevice.ANDROID,
+    app_key="6Lc-recaptcha-site-key",
+    app_action="login",
+)
+
+# Или с прокси (поддерживает длинные значения)
 proxy = ProxyConfig(
     type=ProxyType.HTTP,
     address="very-long-proxy-domain-name.example.com",  # до 255 символов
@@ -324,13 +342,12 @@ proxy = ProxyConfig(
     password="very_long_password_up_to_256_characters"  # до 256 символов
 )
 
-# Решить recaptcha
 recaptcha_task = await client.get_recaptcha_mobile_token(
     app_name="org.telegram.messenger",
     app_device=AppDevice.ANDROID,
     app_key="6Lc-recaptcha-site-key",
     app_action="login",
-    proxy=proxy
+    proxy=proxy,
 )
 
 # Ждать результат

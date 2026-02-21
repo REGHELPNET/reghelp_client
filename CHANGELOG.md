@@ -1,9 +1,12 @@
 # Changelog
 
-## [1.3.2] - 2026-02-21
+## [1.3.3] - 2026-02-21
 
 ### Changed
 - Параметр `proxy` в `get_recaptcha_mobile_token()` и модели `RecaptchaMobileRequest` стал необязательным (`Optional[ProxyConfig] = None`). Прокси-параметры добавляются в запрос только если переданы явно.
+
+### Fixed
+- Добавлен статус `processing` в перечисление `TaskStatus` — API Recaptcha Mobile возвращает этот статус в процессе выполнения задачи.
 
 ## [1.3.1] - 2025-09-28
 
