@@ -208,7 +208,7 @@ class RecaptchaMobileRequest(BaseModel):
     app_device: AppDevice = Field(..., description="Device type")
     app_key: str = Field(..., description="reCAPTCHA key")
     app_action: str = Field(..., description="Action (e.g., login)")
-    proxy: ProxyConfig = Field(..., description="Proxy configuration")
+    proxy: Optional[ProxyConfig] = Field(None, description="Proxy configuration")
     ref: Optional[str] = Field(None, description="Referral code")
     webhook: Optional[HttpUrl] = Field(None, description="Webhook URL")
 

@@ -545,7 +545,7 @@ class RegHelpClient:
         app_device: AppDevice,
         app_key: str,
         app_action: str,
-        proxy: ProxyConfig,
+        proxy: Optional[ProxyConfig] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
     ) -> TokenResponse:
@@ -557,7 +557,7 @@ class RegHelpClient:
             app_device: Device type
             app_key: reCAPTCHA key
             app_action: Action (e.g., "login")
-            proxy: Proxy configuration
+            proxy: Proxy configuration (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
 
@@ -569,8 +569,10 @@ class RegHelpClient:
             "appDevice": app_device.value,
             "appKey": app_key,
             "appAction": app_action,
-            **proxy.to_dict(),
         }
+
+        if proxy is not None:
+            params.update(proxy.to_dict())
 
         if ref:
             params["ref"] = ref

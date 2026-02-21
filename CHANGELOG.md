@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.2] - 2026-02-21
+
+### Changed
+- Параметр `proxy` в `get_recaptcha_mobile_token()` и модели `RecaptchaMobileRequest` стал необязательным (`Optional[ProxyConfig] = None`). Прокси-параметры добавляются в запрос только если переданы явно.
+
 ## [1.3.1] - 2025-09-28
 
 ### Changed
