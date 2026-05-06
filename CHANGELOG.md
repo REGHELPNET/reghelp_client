@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.4] - 2026-05-06
+
+### Changed
+- Improved GitHub and PyPI package metadata for search discovery.
+- Added a search-friendly README introduction covering Push Token API, CAPTCHA API, Play Integrity, Turnstile, reCAPTCHA Mobile, iCloud HME, Gmail OAuth, APNS and FCM workflows.
+- Expanded PyPI keywords and updated project URLs.
+
+### Fixed
+- Synchronized `reghelp_client.__version__` with the published package version.
+
 ## [1.3.3] - 2026-02-21
 
 ### Changed
@@ -137,4 +147,4 @@ await client.get_integrity_token(app, device, nonce, token_type="std")
 - Асинхронная архитектура с httpx
 - Полная типизация с Pydantic
 - Обработка ошибок и retry логика
-- Документация и примеры использования 
+- Документация и примеры использования

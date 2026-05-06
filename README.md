@@ -1,8 +1,28 @@
-# REGHelp Python Client / REGHelp Python Client (Русская версия ниже)
+# REGHelp Python SDK for Push Tokens, CAPTCHA, Play Integrity & Email APIs
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.3-green.svg)
+![Version](https://img.shields.io/badge/version-1.3.4-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+REGHelp Python Client is an asynchronous Python SDK for the REGHelp Key API. Use it to integrate mobile testing and automation workflows for iOS and Android push tokens, VoIP push, Cloudflare Turnstile, reCAPTCHA Mobile, Google Play Integrity, iCloud Hide My Email, Gmail OAuth, webhooks, and task status polling.
+
+```bash
+pip install reghelp-client
+```
+
+## What You Can Automate
+
+| API area | Supported workflows |
+| --- | --- |
+| Push Token API | APNS, FCM, Telegram iOS/Android push tokens, VoIP push tokens |
+| CAPTCHA API | Cloudflare Turnstile, reCAPTCHA Mobile, challenge status polling |
+| Device Attestation | Google Play Integrity tokens for Android testing flows |
+| Email API | iCloud Hide My Email, Gmail OAuth, email verification code polling |
+| Integration tooling | Async Python client, typed Pydantic models, retries, webhooks |
+
+Built for QA engineers, mobile automation teams, and backend developers who need a typed `async`/`await` Python client for REGHelp services.
+
+Русская версия ниже: асинхронный Python SDK для REGHelp Key API, push-токенов, Turnstile, reCAPTCHA Mobile, Play Integrity, iCloud HME, Gmail OAuth и webhook-интеграций.
 
 ---
 
@@ -11,7 +31,7 @@
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-133)
+4. [What's new](#-whats-new-in-134)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -34,7 +54,13 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.3.3
+### 🆕 What's new in 1.3.4
+
+* Improved GitHub and PyPI package metadata for discovery: clearer English summary, expanded keywords, and updated project links.
+* Added a search-friendly README intro for Push Token API, CAPTCHA API, Play Integrity, Turnstile, reCAPTCHA Mobile, iCloud HME, Gmail OAuth, APNS, and FCM workflows.
+* Synchronized `reghelp_client.__version__` with the package version.
+
+### What was new in 1.3.3
 
 * `proxy` parameter in `get_recaptcha_mobile_token()` and `RecaptchaMobileRequest` model is now **optional** (`None` by default). Proxy parameters are only included in the request when explicitly provided.
 * Added `processing` status to `TaskStatus` enum — Recaptcha Mobile API returns this status while a task is being executed.
@@ -130,7 +156,13 @@ if __name__ == "__main__":
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
 
-### 🆕 Что нового в 1.3.3
+### 🆕 Что нового в 1.3.4
+
+* Улучшены метаданные пакета для GitHub и PyPI: англоязычный summary, расширенные keywords и актуальные ссылки проекта.
+* Добавлен SEO-friendly верх README для Push Token API, CAPTCHA API, Play Integrity, Turnstile, reCAPTCHA Mobile, iCloud HME, Gmail OAuth, APNS и FCM.
+* Версия `reghelp_client.__version__` синхронизирована с версией пакета.
+
+### Что нового в 1.3.3
 
 * Параметр `proxy` в `get_recaptcha_mobile_token()` и модели `RecaptchaMobileRequest` стал **необязательным** (по умолчанию `None`). Прокси-параметры добавляются в запрос только при явной передаче.
 * Добавлен статус `processing` в перечисление `TaskStatus` — API Recaptcha Mobile возвращает этот статус в процессе выполнения задачи.
@@ -620,4 +652,4 @@ No, the library is asynchronous-first. You can run it in synchronous code with `
 
 ## 🗒️ Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a complete release history. 
+See [CHANGELOG.md](CHANGELOG.md) for a complete release history.
