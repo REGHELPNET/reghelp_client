@@ -45,10 +45,19 @@ class EmailType(str, Enum):
     GMAIL = "gmail"
 
 
-# New Integrity token type enumeration
+# Integrity token type enumeration
 class IntegrityTokenType(str, Enum):
-    """Integrity token types."""
+    """Integrity token types.
 
+    - ``CLASSIC`` — default flow (omit ``type`` parameter on the wire).
+      Returns a long-lived strong-integrity token (MEETS_STRONG_INTEGRITY)
+      after Play Integrity Classic request (typically 1-3s).
+    - ``STD`` — Standard/Express flow (``type=std`` on the wire). Returns a
+      shorter-lived device-integrity token (MEETS_DEVICE_INTEGRITY) via the
+      cached device token path (typically 200-600ms).
+    """
+
+    CLASSIC = "classic"
     STD = "std"
 
 
@@ -193,10 +202,24 @@ class IntegrityRequest(BaseModel):
     app_name: str = Field(..., description="Application name")
     app_device: AppDevice = Field(..., description="Device type")
     nonce: str = Field(..., min_length=16, max_length=500, description="Nonce for integrity")
+    app_version_code: int = Field(
+        ...,
+        ge=1,
+        le=2_147_483_647,
+        alias="appVersionCode",
+        description=(
+            "APK versionCode of the target app (mandatory). Sent as appVersionCode. "
+            "Must match the version used when the request package is signed."
+        ),
+    )
     token_type: Optional[IntegrityTokenType] = Field(
         None,
         alias="type",
-        description="Integrity token type. For example, 'std' for standard tokens.",
+        description=(
+            "Integrity token type. Omit or pass 'classic' for Classic flow "
+            "(MEETS_STRONG_INTEGRITY). Pass 'std' for Standard/Express flow "
+            "(MEETS_DEVICE_INTEGRITY)."
+        ),
     )
     ref: Optional[str] = Field(None, description="Referral code")
     webhook: Optional[HttpUrl] = Field(None, description="Webhook URL")

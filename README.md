@@ -1,7 +1,7 @@
 # REGHelp Python SDK for Push Tokens, CAPTCHA, Play Integrity & Email APIs
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.3.4-green.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 REGHelp Python Client is an asynchronous Python SDK for the REGHelp Key API. Use it to integrate mobile testing and automation workflows for iOS and Android push tokens, VoIP push, Cloudflare Turnstile, reCAPTCHA Mobile, Google Play Integrity, iCloud Hide My Email, Gmail OAuth, webhooks, and task status polling.
@@ -31,7 +31,7 @@ Built for QA engineers, mobile automation teams, and backend developers who need
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-134)
+4. [What's new](#-whats-new-in-140)
 5. [Environment variables](#-environment-variables)
 6. [Testing](#-testing)
 7. [Contributing](#-contributing)
@@ -54,7 +54,23 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
 
-### 🆕 What's new in 1.3.4
+### 🆕 What's new in 1.4.0
+
+* ⚠️ **Breaking** — `get_integrity_token()` now requires a mandatory
+  `app_version_code: int` argument (the APK `versionCode` of the target
+  app). The Key API rejects Integrity requests without it since the
+  2026-05 release. The parameter is positional **after `nonce`**, so
+  callers that already use keyword-only `ref`/`webhook`/`token_type`
+  upgrade without other changes.
+* Added `IntegrityTokenType.CLASSIC` for explicit Classic-flow selection
+  (`MEETS_STRONG_INTEGRITY`, ~1-3s). Standard/Express remains
+  `IntegrityTokenType.STD` (`MEETS_DEVICE_INTEGRITY`, ~300-600ms).
+* `token_type` accepts strings (`"classic"`, `"std"`, `"standard"`,
+  `"express"`, case-insensitive) and validates them client-side.
+* `IntegrityRequest` Pydantic model gained `app_version_code` (alias
+  `appVersionCode`) with `1..2_147_483_647` range validation.
+
+### What was new in 1.3.4
 
 * Improved GitHub and PyPI package metadata for discovery: clearer English summary, expanded keywords, and updated project links.
 * Added a search-friendly README intro for Push Token API, CAPTCHA API, Play Integrity, Turnstile, reCAPTCHA Mobile, iCloud HME, Gmail OAuth, APNS, and FCM workflows.
@@ -336,21 +352,37 @@ print(f"Код: {email_status.code}")
 
 ```python
 import base64
+from reghelp_client import AppDevice, IntegrityTokenType
 
-# Генерируем nonce
+# Сгенерируйте URL-safe Base64 nonce (16-500 символов)
 nonce = base64.urlsafe_b64encode(b"your_nonce_data").decode()
 
-# Получить integrity токен
+# Classic flow — MEETS_STRONG_INTEGRITY (~1-3s).
+# Передача app_version_code (APK versionCode) обязательна с 1.4.0.
 integrity_task = await client.get_integrity_token(
     app_name="tg",
     app_device=AppDevice.ANDROID,
-    nonce=nonce
+    nonce=nonce,
+    app_version_code=12345,  # versionCode целевого APK
 )
 
-# Ждать результат
 result = await client.wait_for_result(integrity_task.id, "integrity")
-print(f"Integrity токен: {result.token}")
+print(f"Integrity token: {result.token}")
+
+# Standard/Express flow — MEETS_DEVICE_INTEGRITY (~300-600ms).
+fast_task = await client.get_integrity_token(
+    app_name="tg",
+    app_device=AppDevice.ANDROID,
+    nonce=nonce,
+    app_version_code=12345,
+    token_type=IntegrityTokenType.STD,  # или строкой "std"
+)
 ```
+
+Узнать актуальный `versionCode` целевого APK можно командой
+`aapt dump badging <apk> | grep versionCode` или в Play Console.
+Список поддерживаемых приложений и их `cloudProjectNumber` —
+<https://reghelp.net/en/api-docs/>.
 
 ### 🤖 Recaptcha Mobile
 

@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.4.0] - 2026-05-18
+
+### ⚠️ Breaking
+
+- `get_integrity_token()` теперь требует обязательный параметр
+  `app_version_code: int` — APK `versionCode` целевого приложения. Key API
+  начиная с релиза 2026-05 валидирует это поле на серверной стороне и
+  отклоняет запросы без него. Параметр расположен **позиционно после
+  `nonce`**, чтобы пайплайны, использующие keyword-only `ref`/`webhook`/
+  `token_type`, продолжали работать без правок.
+
+  ```python
+  # Было (1.3.x):
+  await client.get_integrity_token(app, device, nonce, token_type="std")
+
+  # Стало (1.4.0):
+  await client.get_integrity_token(
+      app, device, nonce, app_version_code=12345, token_type="std"
+  )
+  ```
+
+### Added
+
+- `IntegrityTokenType.CLASSIC` — явное значение для Classic-флоу
+  (`MEETS_STRONG_INTEGRITY`, время ответа ~1-3s). На сетевом уровне это
+  значение по-прежнему передаётся как **отсутствие** параметра `type`
+  (Classic — поведение по умолчанию Key API), поэтому Python-код может
+  выбирать тип токена единообразно: `CLASSIC` или `STD`.
+- `IntegrityRequest.app_version_code` (alias `appVersionCode`) — добавлен
+  в Pydantic-модель с валидацией диапазона `1..2_147_483_647`.
+- Расширенный docstring для `IntegrityTokenType` и
+  `get_integrity_token()` — описаны Classic vs Standard/Express,
+  ожидаемая латентность и требуемая verdict-полезная нагрузка.
+
+### Changed
+
+- `token_type` теперь принимает не только `IntegrityTokenType`, но и
+  строки `"classic"`, `"std"`, `"standard"`, `"express"` (case-insensitive).
+  Неизвестные значения отклоняются `InvalidParameterError`.
+- Валидация `app_version_code` выполняется до отправки запроса, без
+  лишнего round-trip к Key API.
+
+### Migration notes
+
+| Сценарий                                       | Что делать                                            |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| Classic-токен для текущей сборки               | Добавить `app_version_code=<APK versionCode>`         |
+| Standard/Express                               | `token_type="std"` + `app_version_code=...`            |
+| Передача через `IntegrityRequest` (Pydantic)   | Передавать поле `app_version_code` (или `appVersionCode` через alias) |
+
+Получить актуальный `versionCode` целевого APK можно через `aapt dump
+badging <apk>` или из Play Console. Список поддерживаемых приложений и
+их актуальных `cloudProjectNumber` — на странице
+<https://reghelp.net/en/api-docs/>.
+
 ## [1.3.4] - 2026-05-06
 
 ### Changed

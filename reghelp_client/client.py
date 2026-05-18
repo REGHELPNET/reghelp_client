@@ -482,35 +482,64 @@ class RegHelpClient:
         app_name: str,
         app_device: AppDevice,
         nonce: str,
+        app_version_code: int,
         *,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
-        token_type: Optional[IntegrityTokenType] = None,
+        token_type: Optional[Union[IntegrityTokenType, str]] = None,
     ) -> TokenResponse:
         """
         Get Google Play Integrity token.
 
         Args:
-            app_name: Application name
-            app_device: Device type
-            nonce: Nonce string (URL-safe Base64, up to 200 characters)
-            ref: Referral tag (optional)
-            webhook: URL for webhook notifications (optional)
+            app_name: Application name (e.g. ``tg``, ``wa``, ``instagram``).
+            app_device: Device type (currently only ``AppDevice.ANDROID`` is
+                meaningful for Play Integrity).
+            nonce: Nonce string (URL-safe Base64, 16-500 characters).
+            app_version_code: **Mandatory** APK ``versionCode`` of the target
+                app. Required since Key API v2026-05. Must match the version
+                used when the package is signed by Play. Range: 1..2_147_483_647.
+            ref: Referral tag (optional).
+            webhook: URL for webhook notifications (optional).
+            token_type: Integrity token type. Omit or pass
+                :attr:`IntegrityTokenType.CLASSIC` for Classic flow
+                (``MEETS_STRONG_INTEGRITY``). Pass
+                :attr:`IntegrityTokenType.STD` for Standard/Express flow
+                (``MEETS_DEVICE_INTEGRITY``, faster).
 
         Returns:
-            Information about created task
+            Information about the created task.
         """
-        params = {
+        if not isinstance(app_version_code, int) or isinstance(app_version_code, bool):
+            raise InvalidParameterError("app_version_code must be a positive integer")
+        if app_version_code < 1 or app_version_code > 2_147_483_647:
+            raise InvalidParameterError(
+                "app_version_code must be in range 1..2_147_483_647"
+            )
+
+        params: Dict[str, Any] = {
             "appName": app_name,
             "appDevice": app_device.value,
             "nonce": nonce,
+            "appVersionCode": app_version_code,
         }
 
-        # Optional type parameter for standard Integrity tokens (type=std)
+        # Optional type parameter. Classic is the default on the server side,
+        # so only forward `type` for the Standard/Express flow.
         if token_type is not None:
-            params["type"] = (
+            raw_type = (
                 token_type.value if isinstance(token_type, IntegrityTokenType) else str(token_type)
             )
+            normalized = raw_type.strip().lower()
+            if normalized in {"std", "standard", "express"}:
+                params["type"] = "std"
+            elif normalized in {"", "classic", "default"}:
+                pass  # Classic is the default — omit `type` on the wire.
+            else:
+                raise InvalidParameterError(
+                    f"Unsupported integrity token_type: {raw_type!r}. "
+                    "Expected 'classic' or 'std'."
+                )
 
         if ref:
             params["ref"] = ref
