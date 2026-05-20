@@ -170,7 +170,7 @@ class AttestationStatusResponse(BaseStatusResponse):
         None, description="Base64-encoded leaf private key (PKCS#8)."
     )
     keyboxDeviceId: Optional[str] = Field(
-        None, description="Identifier of the keybox that served this request."
+        None, description="Identifier of the keybox that served this request (debug field)."
     )
 
 

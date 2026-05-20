@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.1] - 2026-05-20
+
+### Removed
+
+- `post_attestation_feedback()` — downstream verdict relay was deemed
+  unnecessary for the public API surface. Internal canary reporting
+  still happens at the attestation-server layer based on its own
+  CRL checks; SDK consumers no longer need to opt in.
+
 ## [1.5.0] - 2026-05-20
 
 ### Added
@@ -15,9 +24,6 @@
       cert_chain_der_b64 = result.authorization
       leaf_private_key_b64 = result.leafPrivateKeyB64
       keybox_device_id = result.keyboxDeviceId
-
-      # If verification failed downstream, let the pool quarantine the keybox:
-      await client.post_attestation_feedback(task.id, ok=False, reason="...")
   ```
 
 - `AttestationStatusResponse` Pydantic model exposing `authorization`,
@@ -29,9 +35,7 @@
 ### Changed
 
 - `_make_request()` gains an optional `method` kwarg (default `"GET"`).
-  Internal-only — public API unchanged. Used by
-  `post_attestation_feedback()` to issue POST requests through the same
-  retry/error-handling pipeline.
+  Internal-only — public API unchanged.
 
 ## [1.4.0] - 2026-05-18
 

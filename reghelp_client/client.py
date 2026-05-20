@@ -663,36 +663,6 @@ class RegHelpClient:
         )
         return AttestationStatusResponse(**data)
 
-    async def post_attestation_feedback(
-        self,
-        task_id: str,
-        *,
-        ok: bool,
-        reason: Optional[str] = None,
-        http_status: Optional[int] = None,
-        verdict: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Report a downstream verdict to attestation-server.
-
-        Free of charge — call after each verification attempt so the
-        backing keybox gets canary-quarantined when ``ok=False``. This
-        keeps the shared keybox pool clean for everyone.
-        """
-        params: Dict[str, Any] = {"id": task_id, "ok": "true" if ok else "false"}
-        if reason:
-            params["reason"] = reason
-        if http_status is not None:
-            params["httpStatus"] = http_status
-        if verdict:
-            params["verdict"] = verdict
-        return await self._make_request(
-            "/attestation/feedback",
-            params,
-            method="POST",
-            task_id=task_id,
-            allow_error_status=True,
-        )
-
     # Recaptcha Mobile operations
     async def get_recaptcha_mobile_token(
         self,
