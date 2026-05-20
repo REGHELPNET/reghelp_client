@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reghelp-client"
-version = "1.5.1"
-description = "Async Python SDK for REGHelp Push Token, CAPTCHA, Play Integrity, WhatsApp Key Attestation and Email APIs"
+version = "1.5.2"
+description = "Async Python SDK for REGHelp Push Token, CAPTCHA, Play Integrity, Android Key Attestation and Email APIs"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [

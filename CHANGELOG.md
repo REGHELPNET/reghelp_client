@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.2] - 2026-05-20
+
+### Changed
+
+- Docs: rebranded the attestation skill from "WhatsApp Key Attestation"
+  to "Android Key Attestation". The flow has always been generic across
+  any package — the WhatsApp framing in the docstring was misleading.
+  No code or wire-format changes; safe drop-in upgrade.
+
 ## [1.5.1] - 2026-05-20
 
 ### Removed

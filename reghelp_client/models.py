@@ -151,13 +151,13 @@ class VoipStatusResponse(BaseStatusResponse):
 
 
 class AttestationStatusResponse(BaseStatusResponse):
-    """Status of WhatsApp Key Attestation task.
+    """Status of Android Key Attestation task.
 
     When ``status == TaskStatus.DONE`` the response carries the full
     `SignResponse` payload from attestation-server: the X.509 certificate
     chain (DER, base64), an optional ECDSA signature over the caller's
     ``enc`` payload, the ephemeral leaf private key, and the keybox
-    device id (used by :meth:`ReghelpClient.post_attestation_feedback`).
+    device id.
     """
 
     authorization: Optional[str] = Field(

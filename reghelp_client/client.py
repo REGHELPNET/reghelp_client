@@ -580,7 +580,7 @@ class RegHelpClient:
         )
         return IntegrityStatusResponse(**data)
 
-    # Attestation operations (WhatsApp Key Attestation)
+    # Attestation operations (Android Key Attestation)
     async def get_attestation_token(
         self,
         authkey: str,
@@ -594,7 +594,12 @@ class RegHelpClient:
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
     ) -> TokenResponse:
-        """Issue a WhatsApp Key Attestation cert chain.
+        """Issue an Android Key Attestation cert chain.
+
+        Wraps a TEE-bound keybox from the server-side pool and returns an
+        X.509 chain with KeyMint attestation extension (OID 1.3.6.1.4.1.11129.2.1.17).
+        Package name and signature default to a stock app fingerprint, but
+        every field is overridable for use against any Google-issued challenge.
 
         Args:
             authkey: Challenge nonce from Google. Hex or base64, 4-512 chars.
@@ -603,12 +608,11 @@ class RegHelpClient:
             verified_boot_key: Optional 32-byte hex; defaults to a zero
                 placeholder normalised by the server.
             verified_boot_hash: Optional 32-byte hex; same default behaviour.
-            apk_version_code: Override the embedded WhatsApp APK versionCode.
+            apk_version_code: Override the embedded APK versionCode.
                 Range 1..2_147_483_647.
-            package_name: Override the embedded package name (default:
-                ``com.whatsapp``). Useful for WhatsApp Business builds.
+            package_name: Override the embedded package name.
             apk_signature_sha256: Override the embedded APK signature digest
-                (32-byte hex). Default ships the live WhatsApp signature.
+                (32-byte hex).
             enc: Optional base64 payload to ECDSA-sign with the leaf key.
                 Returned as ``sign`` in the status response.
             ref: Referral tag.
