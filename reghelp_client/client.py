@@ -26,6 +26,7 @@ from .exceptions import (
 )
 from .models import (
     AppDevice,
+    AttestationStatusResponse,
     BalanceResponse,
     EmailGetResponse,
     EmailStatusResponse,
@@ -157,9 +158,16 @@ class RegHelpClient:
         task_id: Optional[str] = None,
         *,
         allow_error_status: bool = False,
+        method: str = "GET",
     ) -> Dict[str, Any]:
         """
         Execute HTTP request with error handling and retry logic.
+
+        ``method`` is GET by default (every legacy endpoint in this client
+        ships query-string params over GET). Pass ``method="POST"`` for
+        endpoints that mutate server state — params still go on the query
+        string, body stays empty, which matches FastAPI's behaviour when
+        all parameters are declared via ``Query(...)``.
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
@@ -174,9 +182,12 @@ class RegHelpClient:
                 else:
                     masked_params["apiKey"] = "***"
 
-            logger.debug(f"Making request to {url} with params: {masked_params}")
+            logger.debug(f"Making {method} request to {url} with params: {masked_params}")
 
-            response = await self._http_client.get(url, params=request_params)
+            if method.upper() == "POST":
+                response = await self._http_client.post(url, params=request_params)
+            else:
+                response = await self._http_client.get(url, params=request_params)
 
             # Check status code
             if response.status_code == 200:
@@ -230,6 +241,7 @@ class RegHelpClient:
                     retry_count + 1,
                     task_id,
                     allow_error_status=allow_error_status,
+                    method=method,
                 )
             else:
                 raise RegHelpTimeoutError(self.timeout) from e
@@ -243,6 +255,7 @@ class RegHelpClient:
                     retry_count + 1,
                     task_id,
                     allow_error_status=allow_error_status,
+                    method=method,
                 )
             else:
                 raise NetworkError(f"Network error: {e}", original_error=e) from e
@@ -567,6 +580,119 @@ class RegHelpClient:
         )
         return IntegrityStatusResponse(**data)
 
+    # Attestation operations (WhatsApp Key Attestation)
+    async def get_attestation_token(
+        self,
+        authkey: str,
+        *,
+        verified_boot_key: Optional[str] = None,
+        verified_boot_hash: Optional[str] = None,
+        apk_version_code: Optional[int] = None,
+        package_name: Optional[str] = None,
+        apk_signature_sha256: Optional[str] = None,
+        enc: Optional[str] = None,
+        ref: Optional[str] = None,
+        webhook: Optional[str] = None,
+    ) -> TokenResponse:
+        """Issue a WhatsApp Key Attestation cert chain.
+
+        Args:
+            authkey: Challenge nonce from Google. Hex or base64, 4-512 chars.
+                This is the **only mandatory** field — every other knob has a
+                sensible default on the attestation-server side.
+            verified_boot_key: Optional 32-byte hex; defaults to a zero
+                placeholder normalised by the server.
+            verified_boot_hash: Optional 32-byte hex; same default behaviour.
+            apk_version_code: Override the embedded WhatsApp APK versionCode.
+                Range 1..2_147_483_647.
+            package_name: Override the embedded package name (default:
+                ``com.whatsapp``). Useful for WhatsApp Business builds.
+            apk_signature_sha256: Override the embedded APK signature digest
+                (32-byte hex). Default ships the live WhatsApp signature.
+            enc: Optional base64 payload to ECDSA-sign with the leaf key.
+                Returned as ``sign`` in the status response.
+            ref: Referral tag.
+            webhook: Webhook URL fired when the task completes.
+
+        Returns:
+            :class:`TokenResponse` with ``id`` to poll for the cert chain.
+        """
+        params: Dict[str, Any] = {"authkey": authkey}
+        if verified_boot_key:
+            params["verifiedBootKey"] = verified_boot_key
+        if verified_boot_hash:
+            params["verifiedBootHash"] = verified_boot_hash
+        if apk_version_code is not None:
+            if (
+                not isinstance(apk_version_code, int)
+                or isinstance(apk_version_code, bool)
+                or apk_version_code < 1
+                or apk_version_code > 2_147_483_647
+            ):
+                raise InvalidParameterError(
+                    "apk_version_code must be an int in range 1..2_147_483_647"
+                )
+            params["apkVersionCode"] = apk_version_code
+        if package_name:
+            params["packageName"] = package_name
+        if apk_signature_sha256:
+            params["apkSignatureSha256"] = apk_signature_sha256
+        if enc:
+            params["enc"] = enc
+        if ref:
+            params["ref"] = ref
+        if webhook:
+            params["webHook"] = webhook
+
+        data = await self._make_request("/attestation/getToken", params)
+        return TokenResponse(**data)
+
+    async def get_attestation_status(self, task_id: str) -> AttestationStatusResponse:
+        """Fetch attestation task status.
+
+        When ``status == TaskStatus.DONE`` the response includes
+        ``authorization`` (base64 DER cert chain), ``leafPrivateKeyB64``,
+        ``keyboxDeviceId`` and — if the original request carried ``enc`` —
+        the ECDSA ``sign``.
+        """
+        data = await self._make_request(
+            "/attestation/getStatus",
+            {"id": task_id},
+            task_id=task_id,
+            allow_error_status=True,
+        )
+        return AttestationStatusResponse(**data)
+
+    async def post_attestation_feedback(
+        self,
+        task_id: str,
+        *,
+        ok: bool,
+        reason: Optional[str] = None,
+        http_status: Optional[int] = None,
+        verdict: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Report a downstream verdict to attestation-server.
+
+        Free of charge — call after each verification attempt so the
+        backing keybox gets canary-quarantined when ``ok=False``. This
+        keeps the shared keybox pool clean for everyone.
+        """
+        params: Dict[str, Any] = {"id": task_id, "ok": "true" if ok else "false"}
+        if reason:
+            params["reason"] = reason
+        if http_status is not None:
+            params["httpStatus"] = http_status
+        if verdict:
+            params["verdict"] = verdict
+        return await self._make_request(
+            "/attestation/feedback",
+            params,
+            method="POST",
+            task_id=task_id,
+            allow_error_status=True,
+        )
+
     # Recaptcha Mobile operations
     async def get_recaptcha_mobile_token(
         self,
@@ -714,6 +840,7 @@ class RegHelpClient:
         RecaptchaMobileStatusResponse,
         TurnstileStatusResponse,
         VoipStatusResponse,
+        AttestationStatusResponse,
     ]:
         """
         Wait for task completion with automatic polling.
@@ -741,6 +868,7 @@ class RegHelpClient:
             "recaptcha": self.get_recaptcha_mobile_status,
             "turnstile": self.get_turnstile_status,
             "voip": self.get_voip_status,
+            "attestation": self.get_attestation_status,
         }
 
         method = status_methods.get(service)

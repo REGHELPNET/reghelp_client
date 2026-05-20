@@ -150,6 +150,30 @@ class VoipStatusResponse(BaseStatusResponse):
     token: Optional[str] = Field(None, description="VoIP push token")
 
 
+class AttestationStatusResponse(BaseStatusResponse):
+    """Status of WhatsApp Key Attestation task.
+
+    When ``status == TaskStatus.DONE`` the response carries the full
+    `SignResponse` payload from attestation-server: the X.509 certificate
+    chain (DER, base64), an optional ECDSA signature over the caller's
+    ``enc`` payload, the ephemeral leaf private key, and the keybox
+    device id (used by :meth:`ReghelpClient.post_attestation_feedback`).
+    """
+
+    authorization: Optional[str] = Field(
+        None, description="Base64-encoded X.509 cert chain (DER concatenation)."
+    )
+    sign: Optional[str] = Field(
+        None, description="Base64 ECDSA signature over the request's `enc` field."
+    )
+    leafPrivateKeyB64: Optional[str] = Field(
+        None, description="Base64-encoded leaf private key (PKCS#8)."
+    )
+    keyboxDeviceId: Optional[str] = Field(
+        None, description="Identifier of the keybox that served this request."
+    )
+
+
 # Request parameter models
 class ProxyConfig(BaseModel):
     """Proxy configuration."""

@@ -2,7 +2,8 @@
 REGHelp Python Client Library
 
 Modern asynchronous library for interacting with the REGHelp Key API.
-Supports all services: Push, Email, Integrity, Turnstile, VoIP Push and Recaptcha Mobile.
+Supports all services: Push, Email, Integrity, Turnstile, VoIP Push,
+Recaptcha Mobile and WhatsApp Key Attestation.
 """
 
 from .client import RegHelpClient
@@ -18,6 +19,7 @@ from .exceptions import (
 )
 from .models import (
     AppDevice,
+    AttestationStatusResponse,
     BalanceResponse,
     EmailGetResponse,
     EmailStatusResponse,
@@ -33,7 +35,7 @@ from .models import (
     VoipStatusResponse,
 )
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
@@ -48,6 +50,7 @@ __all__ = [
     "RecaptchaMobileStatusResponse",
     "IntegrityStatusResponse",
     "VoipStatusResponse",
+    "AttestationStatusResponse",
     "IntegrityTokenType",
     "AppDevice",
     "RegHelpError",
