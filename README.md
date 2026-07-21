@@ -1,7 +1,7 @@
 # REGHelp Python SDK for Push Tokens, CAPTCHA, Play Integrity & Email APIs
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.4.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.6.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 REGHelp Python Client is an asynchronous Python SDK for the REGHelp Key API. Use it to integrate mobile testing and automation workflows for iOS and Android push tokens, VoIP push, Cloudflare Turnstile, reCAPTCHA Mobile, Google Play Integrity, iCloud Hide My Email, Gmail OAuth, webhooks, and task status polling.
@@ -17,6 +17,7 @@ pip install reghelp-client
 | Push Token API | APNS, FCM, Telegram iOS/Android push tokens, VoIP push tokens |
 | CAPTCHA API | Cloudflare Turnstile, reCAPTCHA Mobile, challenge status polling |
 | Device Attestation | Google Play Integrity tokens for Android testing flows |
+| Provider Registrar API | Client-owned sessions, Android profile binding, bound Integrity and Key Attestation |
 | Email API | iCloud Hide My Email, Gmail OAuth, email verification code polling |
 | Integration tooling | Async Python client, typed Pydantic models, retries, webhooks |
 
@@ -53,6 +54,32 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Async context-manager** for automatic resource management.
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
+
+### Provider registrar API
+
+Client applications own `registrar_session_id`; the SDK owns HTTP transport and
+provider routes. The same binding is reused for Android profile, Play Integrity
+and Key Attestation:
+
+```python
+binding = await client.start_registrar(
+    "whatsapp", "client-session-id", "wa", 262708500
+)
+integrity_task = await client.get_bound_integrity_token(
+    "whatsapp",
+    "client-session-id",
+    "wa",
+    nonce,
+    262708500,
+    token_type="std",
+)
+integrity = await client.get_bound_integrity_status(
+    "whatsapp", integrity_task.id, "client-session-id"
+)
+```
+
+Application code must use these public methods and must not call `_make_request`
+or assemble Key API URLs directly.
 
 ### 🆕 What's new in 1.4.0
 

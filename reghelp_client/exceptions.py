@@ -76,6 +76,13 @@ class ExternalServiceError(RegHelpError):
         super().__init__(message, status_code=502)
 
 
+class InsufficientFundsError(RegHelpError):
+    """Exception raised when the account balance is too low for a paid request (HTTP 402)."""
+
+    def __init__(self, message: str = "Insufficient funds") -> None:
+        super().__init__(message, status_code=402)
+
+
 class UnauthorizedError(RegHelpError):
     """Exception raised for authentication problems (invalid API key)."""
 

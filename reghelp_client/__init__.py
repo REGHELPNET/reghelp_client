@@ -9,6 +9,7 @@ Recaptcha Mobile and Android Key Attestation.
 from .client import RegHelpClient
 from .exceptions import (
     ExternalServiceError,
+    InsufficientFundsError,
     InvalidParameterError,
     MaintenanceModeError,
     RateLimitError,
@@ -19,8 +20,12 @@ from .exceptions import (
 )
 from .models import (
     AppDevice,
+    AppParamsResponse,
     AttestationStatusResponse,
     BalanceResponse,
+    BoundArtifactTaskResponse,
+    BoundAttestationStatusResponse,
+    BoundIntegrityStatusResponse,
     EmailGetResponse,
     EmailStatusResponse,
     IntegrityStatusResponse,
@@ -29,16 +34,22 @@ from .models import (
     ProxyType,
     PushStatusResponse,
     RecaptchaMobileStatusResponse,
+    RegistrarBindingResponse,
     TaskStatus,
     TokenResponse,
     TurnstileStatusResponse,
     VoipStatusResponse,
 )
 
-__version__ = "1.5.2"
+__version__ = "1.6.1"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
+    "AppParamsResponse",
+    "RegistrarBindingResponse",
+    "BoundArtifactTaskResponse",
+    "BoundIntegrityStatusResponse",
+    "BoundAttestationStatusResponse",
     "TokenResponse",
     "TaskStatus",
     "ProxyType",
@@ -60,5 +71,6 @@ __all__ = [
     "TaskNotFoundError",
     "InvalidParameterError",
     "ExternalServiceError",
+    "InsufficientFundsError",
     "UnauthorizedError",
 ]

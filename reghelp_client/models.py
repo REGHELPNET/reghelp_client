@@ -94,6 +94,87 @@ class TokenResponse(BaseResponse):
     balance: float = Field(..., description="Remaining balance")
 
 
+class AppParamsResponse(BaseModel):
+    """Server-maintained application metadata for a registrar provider."""
+
+    status: Optional[str] = Field(None, description="API response status")
+    app: Optional[str] = Field(None, description="Application flavor")
+    params: Dict[str, Any] = Field(default_factory=dict, description="Opaque app parameters")
+    nativeFieldsStale: Optional[bool] = Field(
+        None, description="Whether native capture-derived fields need refresh"
+    )
+    nativeFieldsVersionCode: Optional[int] = Field(
+        None, description="Version code represented by native fields"
+    )
+    versionCode: Optional[int] = Field(None, description="Current application version code")
+    versionName: Optional[str] = Field(None, description="Current application version name")
+
+
+class RegistrarBindingResponse(BaseModel):
+    """Android profile bound to one client-owned registrar session."""
+
+    status: str = Field(..., description="Binding status")
+    provider: Optional[str] = Field(None, description="Provider namespace")
+    appName: Optional[str] = Field(None, description="Application flavor")
+    registrarSessionId: Optional[str] = Field(None, description="Client registrar session ID")
+    profile_id: Optional[str] = Field(None, description="Bound Android profile ID")
+    device_profile: Dict[str, Any] = Field(
+        default_factory=dict, description="Bound Android device/build profile"
+    )
+    message: Optional[str] = Field(None, description="Error or status message")
+    detail: Optional[str] = Field(None, description="Additional error detail")
+
+
+class BoundArtifactTaskResponse(BaseModel):
+    """Task accepted through a provider registrar binding."""
+
+    id: str = Field(..., description="Task ID")
+    status: Optional[str] = Field(None, description="Task creation status")
+    service: Optional[str] = Field(None, description="Service code")
+    product: Optional[str] = Field(None, description="Product type")
+    price: Optional[float] = Field(None, description="Service price")
+    balance: Optional[float] = Field(None, description="Remaining balance")
+
+
+class BoundIntegrityStatusResponse(BaseModel):
+    """Play Integrity result tied to a registrar binding."""
+
+    id: Optional[str] = Field(None, description="Task ID")
+    status: TaskStatus = Field(..., description="Task status")
+    token: Optional[str] = Field(None, description="Integrity token")
+    registrarSessionId: Optional[str] = Field(None, description="Client registrar session ID")
+    profile_id: Optional[str] = Field(None, description="Bound Android profile ID")
+    device_profile: Dict[str, Any] = Field(
+        default_factory=dict, description="Bound Android device/build profile"
+    )
+    message: Optional[str] = Field(None, description="Error or status message")
+    detail: Optional[str] = Field(None, description="Additional error detail")
+    error: Optional[str] = Field(None, description="Provider error")
+    reason: Optional[str] = Field(None, description="Provider error reason")
+
+
+class BoundAttestationStatusResponse(BaseModel):
+    """Android Key Attestation result tied to a registrar binding."""
+
+    id: Optional[str] = Field(None, description="Task ID")
+    status: TaskStatus = Field(..., description="Task status")
+    authorization: Optional[str] = Field(None, description="Base64 DER certificate chain")
+    sign: Optional[str] = Field(None, description="Optional ECDSA signature")
+    leafPrivateKeyB64: Optional[str] = Field(None, description="Base64 PKCS#8 leaf key")
+    keyboxDeviceId: Optional[str] = Field(None, description="Serving keybox device ID")
+    registrarSessionId: Optional[str] = Field(None, description="Client registrar session ID")
+    profile_id: Optional[str] = Field(None, description="Bound Android profile ID")
+    device_profile: Dict[str, Any] = Field(
+        default_factory=dict, description="Bound Android device/build profile"
+    )
+    rebind_required: Optional[bool] = Field(None, description="Binding must be refreshed")
+    rebindRequired: Optional[bool] = Field(None, description="Legacy rebind marker")
+    message: Optional[str] = Field(None, description="Error or status message")
+    detail: Optional[str] = Field(None, description="Additional error detail")
+    error: Optional[str] = Field(None, description="Provider error")
+    reason: Optional[str] = Field(None, description="Provider error reason")
+
+
 class BaseStatusResponse(BaseModel):
     """Base model for task status."""
 

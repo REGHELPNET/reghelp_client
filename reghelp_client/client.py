@@ -6,12 +6,14 @@ Provides an asynchronous interface to work with all REGHelp services.
 
 import asyncio
 import logging
+import re
 from typing import Any, Dict, Optional, Union
 
 import httpx
 
 from .exceptions import (
     ExternalServiceError,
+    InsufficientFundsError,
     InvalidParameterError,
     MaintenanceModeError,
     NetworkError,
@@ -26,8 +28,12 @@ from .exceptions import (
 )
 from .models import (
     AppDevice,
+    AppParamsResponse,
     AttestationStatusResponse,
     BalanceResponse,
+    BoundArtifactTaskResponse,
+    BoundAttestationStatusResponse,
+    BoundIntegrityStatusResponse,
     EmailGetResponse,
     EmailStatusResponse,
     EmailType,
@@ -37,6 +43,7 @@ from .models import (
     PushStatusResponse,
     PushStatusType,
     RecaptchaMobileStatusResponse,
+    RegistrarBindingResponse,
     TaskStatus,
     TokenResponse,
     TurnstileStatusResponse,
@@ -57,6 +64,7 @@ class RegHelpClient:
     DEFAULT_TIMEOUT = 30.0
     DEFAULT_MAX_RETRIES = 3
     DEFAULT_RETRY_DELAY = 1.0
+    _PROVIDER_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
     def __init__(
         self,
@@ -113,6 +121,36 @@ class RegHelpClient:
         """Build full URL for endpoint."""
         return f"{self.base_url}/{endpoint.lstrip('/')}"
 
+    @classmethod
+    def _provider_endpoint(cls, provider: str, endpoint: str) -> str:
+        """Build a provider-scoped API path without permitting path injection."""
+        normalized = str(provider or "").strip().lower()
+        if not cls._PROVIDER_RE.fullmatch(normalized):
+            raise InvalidParameterError(
+                "provider must match ^[a-z][a-z0-9_-]{0,63}$"
+            )
+        return f"/{normalized}/{endpoint.lstrip('/')}"
+
+    @staticmethod
+    def _required_text(value: str, name: str) -> str:
+        normalized = str(value or "").strip()
+        if not normalized:
+            raise InvalidParameterError(f"{name} is required")
+        return normalized
+
+    @staticmethod
+    def _positive_version_code(value: int) -> int:
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 1
+            or value > 2_147_483_647
+        ):
+            raise InvalidParameterError(
+                "app_version_code must be an int in range 1..2_147_483_647"
+            )
+        return value
+
     def _build_params(self, **kwargs) -> Dict[str, str]:
         """Build request parameters with API key."""
         params = {"apiKey": self.api_key}
@@ -124,11 +162,30 @@ class RegHelpClient:
                     params[key] = str(value)
         return params
 
+    @staticmethod
+    def _idempotency_headers(request_id: Optional[str]) -> Optional[Dict[str, str]]:
+        """Build the ``Idempotency-Key`` header block for paid task creation.
+
+        The public ``request_id=`` argument is the canonical idempotency token.
+        It travels as an HTTP header (``Idempotency-Key``) rather than a query
+        parameter so the Key API idempotency middleware can dedupe repeated
+        paid task creation. Returns ``None`` when no request id is supplied so
+        the transport omits the header entirely.
+        """
+        token = str(request_id or "").strip()
+        return {"Idempotency-Key": token} if token else None
+
     def _map_error_code(
         self, error_id: str, status_code: int, task_id: Optional[str] = None
     ) -> RegHelpError:
         """Map error codes to corresponding exceptions."""
         if status_code == 401:
+            return UnauthorizedError()
+
+        if status_code == 402 or error_id == "INSUFFICIENT_FUNDS":
+            return InsufficientFundsError()
+
+        if error_id in ("UNAUTHORIZED", "NOT_AUTHORIZED"):
             return UnauthorizedError()
 
         if error_id == "RATE_LIMIT":
@@ -159,6 +216,7 @@ class RegHelpClient:
         *,
         allow_error_status: bool = False,
         method: str = "GET",
+        headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Execute HTTP request with error handling and retry logic.
@@ -168,6 +226,11 @@ class RegHelpClient:
         endpoints that mutate server state — params still go on the query
         string, body stays empty, which matches FastAPI's behaviour when
         all parameters are declared via ``Query(...)``.
+
+        ``headers`` carries request-scoped HTTP headers (e.g. the
+        ``Idempotency-Key`` used by paid task-creation endpoints). It is
+        preserved verbatim across every retry so an idempotent request keeps
+        the same key on a 429/timeout/network re-send.
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
@@ -185,9 +248,13 @@ class RegHelpClient:
             logger.debug(f"Making {method} request to {url} with params: {masked_params}")
 
             if method.upper() == "POST":
-                response = await self._http_client.post(url, params=request_params)
+                response = await self._http_client.post(
+                    url, params=request_params, headers=headers
+                )
             else:
-                response = await self._http_client.get(url, params=request_params)
+                response = await self._http_client.get(
+                    url, params=request_params, headers=headers
+                )
 
             # Check status code
             if response.status_code == 200:
@@ -213,6 +280,8 @@ class RegHelpClient:
                         retry_count + 1,
                         task_id,
                         allow_error_status=allow_error_status,
+                        method=method,
+                        headers=headers,
                     )
                 else:
                     raise RateLimitError()
@@ -242,6 +311,7 @@ class RegHelpClient:
                     task_id,
                     allow_error_status=allow_error_status,
                     method=method,
+                    headers=headers,
                 )
             else:
                 raise RegHelpTimeoutError(self.timeout) from e
@@ -256,6 +326,7 @@ class RegHelpClient:
                     task_id,
                     allow_error_status=allow_error_status,
                     method=method,
+                    headers=headers,
                 )
             else:
                 raise NetworkError(f"Network error: {e}", original_error=e) from e
@@ -286,6 +357,184 @@ class RegHelpClient:
         """
         data = await self._make_request("/balance")
         return BalanceResponse(**data)
+
+    # Provider registrar operations
+    async def get_provider_app_params(
+        self,
+        provider: str,
+        app_name: str,
+    ) -> AppParamsResponse:
+        """Get server-maintained opaque app parameters for a provider flavor."""
+        app = self._required_text(app_name, "app_name")
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/appParams"),
+            {"app": app},
+        )
+        return AppParamsResponse(**data)
+
+    async def start_registrar(
+        self,
+        provider: str,
+        registrar_session_id: str,
+        app_name: str,
+        app_version_code: int,
+        *,
+        request_id: Optional[str] = None,
+    ) -> RegistrarBindingResponse:
+        """Idempotently bind an Android profile to a client-owned registrar session."""
+        params: Dict[str, Any] = {
+            "registrarSessionId": self._required_text(
+                registrar_session_id, "registrar_session_id"
+            ),
+            "appName": self._required_text(app_name, "app_name"),
+            "appVersionCode": self._positive_version_code(app_version_code),
+        }
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/registrar/start"),
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
+        return RegistrarBindingResponse(**data)
+
+    async def get_registrar_binding(
+        self,
+        provider: str,
+        registrar_session_id: str,
+    ) -> RegistrarBindingResponse:
+        """Read the profile binding for a client-owned registrar session.
+
+        An unknown session is a normal, readable outcome — the Key API returns
+        ``{"status": "not_found", "registrarSessionId": ..., "profile_id": null,
+        "device_profile": {}}`` with HTTP 200. This is parsed into a
+        :class:`RegistrarBindingResponse` with ``status == "not_found"`` rather
+        than raised as an error, so callers can branch on the status field.
+        """
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/registrar/getBinding"),
+            {
+                "registrarSessionId": self._required_text(
+                    registrar_session_id, "registrar_session_id"
+                )
+            },
+            allow_error_status=True,
+        )
+        return RegistrarBindingResponse(**data)
+
+    async def get_bound_integrity_token(
+        self,
+        provider: str,
+        registrar_session_id: str,
+        app_name: str,
+        nonce: str,
+        app_version_code: int,
+        *,
+        token_type: Optional[Union[IntegrityTokenType, str]] = None,
+        request_id: Optional[str] = None,
+    ) -> BoundArtifactTaskResponse:
+        """Create a Play Integrity task on the registrar session's bound profile."""
+        params: Dict[str, Any] = {
+            "registrarSessionId": self._required_text(
+                registrar_session_id, "registrar_session_id"
+            ),
+            "appName": self._required_text(app_name, "app_name"),
+            "nonce": self._required_text(nonce, "nonce"),
+            "appVersionCode": self._positive_version_code(app_version_code),
+        }
+        if token_type is not None:
+            raw_type = (
+                token_type.value if isinstance(token_type, IntegrityTokenType) else str(token_type)
+            )
+            normalized_type = raw_type.strip().lower()
+            if normalized_type in {"std", "standard", "express"}:
+                params["type"] = "std"
+            elif normalized_type in {"classic", "default"}:
+                params["type"] = "classic"
+            else:
+                raise InvalidParameterError(
+                    f"Unsupported integrity token_type: {raw_type!r}. "
+                    "Expected 'classic' or 'std'."
+                )
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/integrity/getToken"),
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
+        return BoundArtifactTaskResponse(**data)
+
+    async def get_bound_integrity_status(
+        self,
+        provider: str,
+        task_id: str,
+        registrar_session_id: str,
+    ) -> BoundIntegrityStatusResponse:
+        """Poll a bound Play Integrity task without losing provider error payloads."""
+        task = self._required_text(task_id, "task_id")
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/integrity/getStatus"),
+            {
+                "id": task,
+                "registrarSessionId": self._required_text(
+                    registrar_session_id, "registrar_session_id"
+                ),
+            },
+            task_id=task,
+            allow_error_status=True,
+        )
+        return BoundIntegrityStatusResponse(**data)
+
+    async def get_bound_attestation_token(
+        self,
+        provider: str,
+        registrar_session_id: str,
+        authkey: str,
+        app_name: str,
+        app_version_code: int,
+        apk_signature_sha256: str,
+        *,
+        enc: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> BoundArtifactTaskResponse:
+        """Create a Key Attestation task on the registrar session's bound profile."""
+        params: Dict[str, Any] = {
+            "registrarSessionId": self._required_text(
+                registrar_session_id, "registrar_session_id"
+            ),
+            "authkey": self._required_text(authkey, "authkey"),
+            "appName": self._required_text(app_name, "app_name"),
+            "appVersionCode": self._positive_version_code(app_version_code),
+            "apkSignatureSha256": self._required_text(
+                apk_signature_sha256, "apk_signature_sha256"
+            ),
+        }
+        if enc:
+            params["enc"] = enc
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/attestation/getToken"),
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
+        return BoundArtifactTaskResponse(**data)
+
+    async def get_bound_attestation_status(
+        self,
+        provider: str,
+        task_id: str,
+        registrar_session_id: str,
+    ) -> BoundAttestationStatusResponse:
+        """Poll a bound Key Attestation task without losing rebind markers."""
+        task = self._required_text(task_id, "task_id")
+        data = await self._make_request(
+            self._provider_endpoint(provider, "/attestation/getStatus"),
+            {
+                "id": task,
+                "registrarSessionId": self._required_text(
+                    registrar_session_id, "registrar_session_id"
+                ),
+            },
+            task_id=task,
+            allow_error_status=True,
+        )
+        return BoundAttestationStatusResponse(**data)
 
     # Push operations
     async def get_push_token(

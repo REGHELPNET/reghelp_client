@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.6.1] - 2026-07-21
+
+### Added
+
+- `InsufficientFundsError` (HTTP 402 / `INSUFFICIENT_FUNDS`) — paid endpoints now
+  raise a typed insufficient-balance error instead of a generic `RegHelpError`;
+  exported from the package root. `_map_error_code()` also maps `UNAUTHORIZED` /
+  `NOT_AUTHORIZED` error ids to `UnauthorizedError`.
+
+### Changed
+
+- `request_id=` on the provider registrar methods (`start_registrar()`,
+  `get_bound_integrity_token()`, `get_bound_attestation_token()`) now travels
+  as the HTTP header **`Idempotency-Key: <request_id>`** instead of the
+  `requestId` query parameter. This is the canonical transport the Key API
+  idempotency middleware reads to dedupe paid task creation: replaying the same
+  key with the same request returns the original response without a second
+  charge, while a different fingerprint under the same key is rejected with
+  HTTP 422. Public method signatures are unchanged — existing callers passing
+  `request_id=` keep working, the value simply moves from the query string to a
+  header. The header is preserved verbatim across every retry (429 / timeout /
+  network), so an idempotent request keeps its key on re-send.
+
+### Fixed
+
+- `get_registrar_binding()` now reliably parses the Key API's structured
+  `not_found` response (`{"status": "not_found", "registrarSessionId": ...,
+  "profile_id": null, "device_profile": {}}`) into a
+  `RegistrarBindingResponse` with `status == "not_found"` — a normal readable
+  state, not a raised exception. `RegistrarBindingResponse.status` is a
+  required field, so callers can always branch on it.
+
+### Internal
+
+- `_make_request()` gains an optional `headers` kwarg (default `None`),
+  threaded through all retry paths. The 429 retry branch now also forwards the
+  request `method`, matching the timeout/network branches.
+
+## [1.6.0] - 2026-07-20
+
+### Added
+
+- Public provider registrar API: `get_provider_app_params()`,
+  `start_registrar()`, `get_registrar_binding()`, bound Play Integrity and
+  bound Android Key Attestation task/status methods.
+- Typed response models for registrar bindings and bound artifacts.
+- Provider path validation so application clients never construct API URLs or
+  call the SDK's private transport.
+
 ## [1.5.2] - 2026-05-20
 
 ### Changed
