@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0] - 2026-08-14
+
+### Added
+
+- Every paid task-creation method now accepts an optional `request_id=`. The
+  value is sent as `Idempotency-Key`, so callers can safely retry the same
+  logical task after an ambiguous timeout without creating a second charge.
+
+### Changed
+
+- When `request_id` is omitted, the SDK generates a UUID once per logical
+  method call and reuses it across all internal transport retries. Explicitly
+  pass the original `request_id` when retrying the whole SDK method after the
+  caller lost the response.
+
 ## [1.6.1] - 2026-07-21
 
 ### Added

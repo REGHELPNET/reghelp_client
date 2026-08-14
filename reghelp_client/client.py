@@ -7,7 +7,9 @@ Provides an asynchronous interface to work with all REGHelp services.
 import asyncio
 import logging
 import re
-from typing import Any, Dict, Optional, Union
+from types import TracebackType
+from typing import Any, Dict, Optional, Type, Union, cast
+from uuid import uuid4
 
 import httpx
 
@@ -108,7 +110,12 @@ class RegHelpClient:
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Async context manager exit."""
         await self.close()
 
@@ -151,7 +158,7 @@ class RegHelpClient:
             )
         return value
 
-    def _build_params(self, **kwargs) -> Dict[str, str]:
+    def _build_params(self, **kwargs: Any) -> Dict[str, str]:
         """Build request parameters with API key."""
         params = {"apiKey": self.api_key}
         for key, value in kwargs.items():
@@ -163,17 +170,20 @@ class RegHelpClient:
         return params
 
     @staticmethod
-    def _idempotency_headers(request_id: Optional[str]) -> Optional[Dict[str, str]]:
+    def _idempotency_headers(request_id: Optional[str]) -> Dict[str, str]:
         """Build the ``Idempotency-Key`` header block for paid task creation.
 
         The public ``request_id=`` argument is the canonical idempotency token.
         It travels as an HTTP header (``Idempotency-Key``) rather than a query
         parameter so the Key API idempotency middleware can dedupe repeated
-        paid task creation. Returns ``None`` when no request id is supplied so
-        the transport omits the header entirely.
+        paid task creation. When the caller omits ``request_id``, generate one
+        once for this logical SDK call; ``_make_request`` then preserves the
+        same header across its internal retries. Callers retrying the whole SDK
+        method after an ambiguous network outcome should pass their original
+        ``request_id`` explicitly.
         """
         token = str(request_id or "").strip()
-        return {"Idempotency-Key": token} if token else None
+        return {"Idempotency-Key": token or str(uuid4())}
 
     def _map_error_code(
         self, error_id: str, status_code: int, task_id: Optional[str] = None
@@ -259,7 +269,7 @@ class RegHelpClient:
             # Check status code
             if response.status_code == 200:
                 try:
-                    data = response.json()
+                    data: Dict[str, Any] = response.json()
 
                     # Check for errors in response
                     if data.get("status") == "error" and not allow_error_status:
@@ -545,6 +555,7 @@ class RegHelpClient:
         app_build: Optional[str] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """
         Create task for getting push token.
@@ -556,6 +567,7 @@ class RegHelpClient:
             app_build: Build number (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             Information about created task
@@ -574,7 +586,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/push/getToken", params)
+        data = await self._make_request(
+            "/push/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_push_status(self, task_id: str) -> PushStatusResponse:
@@ -641,6 +657,7 @@ class RegHelpClient:
         app_name: str,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """
         Create task for getting VoIP push token.
@@ -649,6 +666,7 @@ class RegHelpClient:
             app_name: Application name
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             Information about created task
@@ -660,7 +678,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/pushVoip/getToken", params)
+        data = await self._make_request(
+            "/pushVoip/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_voip_status(self, task_id: str) -> VoipStatusResponse:
@@ -690,6 +712,7 @@ class RegHelpClient:
         email_type: EmailType,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> EmailGetResponse:
         """
         Get temporary email address.
@@ -701,6 +724,7 @@ class RegHelpClient:
             email_type: Email provider type (icloud/gmail)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             Information about email address
@@ -717,7 +741,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/email/getEmail", params)
+        data = await self._make_request(
+            "/email/getEmail",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return EmailGetResponse(**data)
 
     async def get_email_status(self, task_id: str) -> EmailStatusResponse:
@@ -749,6 +777,7 @@ class RegHelpClient:
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
         token_type: Optional[Union[IntegrityTokenType, str]] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """
         Get Google Play Integrity token.
@@ -763,6 +792,7 @@ class RegHelpClient:
                 used when the package is signed by Play. Range: 1..2_147_483_647.
             ref: Referral tag (optional).
             webhook: URL for webhook notifications (optional).
+            request_id: Stable idempotency key for retrying the same paid task intent.
             token_type: Integrity token type. Omit or pass
                 :attr:`IntegrityTokenType.CLASSIC` for Classic flow
                 (``MEETS_STRONG_INTEGRITY``). Pass
@@ -808,7 +838,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/integrity/getToken", params)
+        data = await self._make_request(
+            "/integrity/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_integrity_status(self, task_id: str) -> IntegrityStatusResponse:
@@ -842,6 +876,7 @@ class RegHelpClient:
         enc: Optional[str] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """Issue an Android Key Attestation cert chain.
 
@@ -866,6 +901,7 @@ class RegHelpClient:
                 Returned as ``sign`` in the status response.
             ref: Referral tag.
             webhook: Webhook URL fired when the task completes.
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             :class:`TokenResponse` with ``id`` to poll for the cert chain.
@@ -897,7 +933,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/attestation/getToken", params)
+        data = await self._make_request(
+            "/attestation/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_attestation_status(self, task_id: str) -> AttestationStatusResponse:
@@ -926,6 +966,7 @@ class RegHelpClient:
         proxy: Optional[ProxyConfig] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """
         Solve mobile reCAPTCHA challenge.
@@ -938,6 +979,7 @@ class RegHelpClient:
             proxy: Proxy configuration (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             Information about created task
@@ -957,7 +999,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/RecaptchaMobile/getToken", params)
+        data = await self._make_request(
+            "/RecaptchaMobile/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_recaptcha_mobile_status(self, task_id: str) -> RecaptchaMobileStatusResponse:
@@ -990,6 +1036,7 @@ class RegHelpClient:
         scope: Optional[str] = None,
         ref: Optional[str] = None,
         webhook: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> TokenResponse:
         """
         Solve Cloudflare Turnstile challenge.
@@ -1004,6 +1051,7 @@ class RegHelpClient:
             scope: Scope value (optional)
             ref: Referral tag (optional)
             webhook: URL for webhook notifications (optional)
+            request_id: Stable idempotency key for retrying the same paid task intent.
 
         Returns:
             Information about created task
@@ -1028,7 +1076,11 @@ class RegHelpClient:
         if webhook:
             params["webHook"] = webhook
 
-        data = await self._make_request("/turnstile/getToken", params)
+        data = await self._make_request(
+            "/turnstile/getToken",
+            params,
+            headers=self._idempotency_headers(request_id),
+        )
         return TokenResponse(**data)
 
     async def get_turnstile_status(self, task_id: str) -> TurnstileStatusResponse:
@@ -1106,6 +1158,17 @@ class RegHelpClient:
             status_response = await method(task_id)
 
             if status_response.status in {TaskStatus.DONE, TaskStatus.ERROR}:
-                return status_response
+                return cast(
+                    Union[
+                        PushStatusResponse,
+                        EmailStatusResponse,
+                        IntegrityStatusResponse,
+                        RecaptchaMobileStatusResponse,
+                        TurnstileStatusResponse,
+                        VoipStatusResponse,
+                        AttestationStatusResponse,
+                    ],
+                    status_response,
+                )
 
             await asyncio.sleep(poll_interval)

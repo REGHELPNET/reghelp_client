@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from uuid import UUID
 
 import pytest
 
@@ -159,9 +160,13 @@ def test_provider_registrar_contract_uses_public_sdk_methods() -> None:
     assert http.calls[3][2]["registrarSessionId"] == "session-1"
     assert http.calls[5][2]["apkSignatureSha256"] == "signature-digest"
     assert all(call[2]["apiKey"] == "api-key" for call in http.calls)
-    # request_id was not supplied, so no requestId query and no idempotency header
+    # request_id never leaks into the query string. Paid create calls receive an
+    # automatically generated idempotency key; read/status calls do not.
     assert all("requestId" not in call[2] for call in http.calls)
-    assert all("Idempotency-Key" not in call[3] for call in http.calls)
+    for index in (1, 3, 5):
+        UUID(http.calls[index][3]["Idempotency-Key"])
+    for index in (0, 2, 4, 6):
+        assert "Idempotency-Key" not in http.calls[index][3]
 
 
 def test_request_id_travels_as_idempotency_key_header() -> None:
@@ -215,7 +220,7 @@ def test_request_id_travels_as_idempotency_key_header() -> None:
     assert http.calls[2][3]["Idempotency-Key"] == "req-attestation"
 
 
-def test_blank_request_id_sends_no_idempotency_header() -> None:
+def test_blank_request_id_generates_idempotency_header() -> None:
     http = _HttpClient(
         [
             {
@@ -235,7 +240,7 @@ def test_blank_request_id_sends_no_idempotency_header() -> None:
     )
 
     assert "requestId" not in http.calls[0][2]
-    assert "Idempotency-Key" not in http.calls[0][3]
+    UUID(http.calls[0][3]["Idempotency-Key"])
 
 
 def test_get_registrar_binding_parses_not_found_without_raising() -> None:
