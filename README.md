@@ -32,12 +32,13 @@ Built for QA engineers, mobile automation teams, and backend developers who need
 1. [Features](#-features)
 2. [Installation](#-installation)
 3. [Quick start](#-quick-start)
-4. [What's new](#-whats-new-in-140)
-5. [Environment variables](#-environment-variables)
-6. [Testing](#-testing)
-7. [Contributing](#-contributing)
-8. [FAQ](#-faq)
-9. [Changelog](#-changelog)
+4. [Paid task idempotency](#paid-task-idempotency)
+5. [What's new](#-whats-new-in-171)
+6. [Environment variables](#-environment-variables)
+7. [Testing](#-testing)
+8. [Contributing](#-contributing)
+9. [FAQ](#-faq)
+10. [Changelog](#-changelog)
 
 ---
 
@@ -54,6 +55,7 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 * **Async context-manager** for automatic resource management.
 * **Webhook support** out of the box.
 * **Comprehensive error handling** with dedicated exception classes.
+* **Exactly-once paid intents** through `request_id` / `Idempotency-Key`.
 
 ### Provider registrar API
 
@@ -80,6 +82,47 @@ integrity = await client.get_bound_integrity_status(
 
 Application code must use these public methods and must not call `_make_request`
 or assemble Key API URLs directly.
+
+### Paid task idempotency
+
+Every paid task-creation method accepts `request_id`. The SDK sends it as the
+`Idempotency-Key` header, and the Key API returns the original task for a replay
+of the same intent instead of creating a second debit.
+
+```python
+from uuid import uuid4
+
+intent_id = str(uuid4())
+
+try:
+    task = await client.get_push_token(
+        app_name="tgiOS",
+        app_device=AppDevice.IOS,
+        request_id=intent_id,
+    )
+except NetworkError:
+    # The server may have committed the first request before the connection was
+    # lost. Retry the whole SDK call with the SAME logical intent id.
+    task = await client.get_push_token(
+        app_name="tgiOS",
+        app_device=AppDevice.IOS,
+        request_id=intent_id,
+    )
+```
+
+If `request_id` is omitted, the SDK generates a UUID and reuses it across its
+built-in 429/timeout/network retries. If application code retries the whole SDK
+method after losing the response, it must retain and pass the original
+`request_id`. Reusing one key with different parameters is rejected.
+
+This contract applies to `get_push_token`, `get_voip_token`, `get_email`,
+`get_integrity_token`, `get_attestation_token`,
+`get_recaptcha_mobile_token`, and `get_turnstile_token`.
+
+### 🆕 What's new in 1.7.1
+
+* Documented the paid-task idempotency contract and safe retry pattern.
+* Exported `EmailType` from the package root, matching the public README examples.
 
 ### 🆕 What's new in 1.4.0
 
@@ -160,6 +203,7 @@ pip install "reghelp-client[dev]"
 
 ```python
 import asyncio
+from uuid import uuid4
 from reghelp_client import RegHelpClient, AppDevice, EmailType
 
 async def main():
@@ -171,7 +215,8 @@ async def main():
         # Get Telegram iOS push token
         task = await client.get_push_token(
             app_name="tgiOS",
-            app_device=AppDevice.IOS
+            app_device=AppDevice.IOS,
+            request_id=str(uuid4()),
         )
         print(f"Task created: {task.id}")
         
@@ -198,6 +243,48 @@ if __name__ == "__main__":
 - **Context manager**: Поддержка async context manager
 - **Webhook support**: Поддержка webhook уведомлений
 - **Comprehensive error handling**: Детальная обработка всех ошибок API
+- **Идемпотентные списания**: `request_id` защищает платную задачу от повторной оплаты
+
+### Идемпотентность платных задач
+
+Все методы создания платных задач принимают `request_id`. SDK передаёт его в
+заголовке `Idempotency-Key`: повтор того же намерения возвращает исходную задачу
+и не создаёт второе списание.
+
+```python
+from uuid import uuid4
+
+intent_id = str(uuid4())
+
+try:
+    task = await client.get_push_token(
+        app_name="tgiOS",
+        app_device=AppDevice.IOS,
+        request_id=intent_id,
+    )
+except NetworkError:
+    # Первый запрос мог успеть сохраниться до обрыва соединения.
+    # Повторяем с тем же идентификатором логической операции.
+    task = await client.get_push_token(
+        app_name="tgiOS",
+        app_device=AppDevice.IOS,
+        request_id=intent_id,
+    )
+```
+
+Без `request_id` SDK сам создаёт UUID и сохраняет его во всех встроенных
+повторах после 429/timeout/network error. Если ваш код повторяет весь вызов
+метода после потерянного ответа, сохраните и передайте исходный `request_id`.
+Один ключ с другими параметрами будет отклонён.
+
+Контракт действует для `get_push_token`, `get_voip_token`, `get_email`,
+`get_integrity_token`, `get_attestation_token`,
+`get_recaptcha_mobile_token` и `get_turnstile_token`.
+
+### 🆕 Что нового в 1.7.1
+
+* Добавлена документация безопасного повтора платных запросов через `request_id`.
+* `EmailType` экспортируется из корня пакета, как показано в примерах README.
 
 ### 🆕 Что нового в 1.3.4
 
@@ -256,6 +343,7 @@ pip install reghelp-client[dev]
 
 ```python
 import asyncio
+from uuid import uuid4
 from reghelp_client import RegHelpClient, AppDevice, EmailType
 
 async def main():
@@ -267,7 +355,8 @@ async def main():
         # Получить push токен для Telegram iOS
         task = await client.get_push_token(
             app_name="tgiOS",
-            app_device=AppDevice.IOS
+            app_device=AppDevice.IOS,
+            request_id=str(uuid4()),
         )
         print(f"Задача создана: {task.id}")
         
@@ -317,7 +406,8 @@ task = await client.get_push_token(
     app_device=AppDevice.IOS,
     app_version="10.9.2",
     app_build="25345",
-    ref="my_ref_tag"
+    ref="my_ref_tag",
+    request_id="stable-client-operation-id",
 )
 
 # Для Telegram Android
@@ -365,7 +455,8 @@ email_task = await client.get_email(
     app_name="tg",
     app_device=AppDevice.IOS,
     phone="+15551234567",
-    email_type=EmailType.ICLOUD
+    email_type=EmailType.ICLOUD,
+    request_id="stable-client-operation-id",
 )
 
 print(f"Email: {email_task.email}")
@@ -391,6 +482,7 @@ integrity_task = await client.get_integrity_token(
     app_device=AppDevice.ANDROID,
     nonce=nonce,
     app_version_code=12345,  # versionCode целевого APK
+    request_id="stable-client-operation-id",
 )
 
 result = await client.wait_for_result(integrity_task.id, "integrity")
@@ -422,6 +514,7 @@ recaptcha_task = await client.get_recaptcha_mobile_token(
     app_device=AppDevice.ANDROID,
     app_key="6Lc-recaptcha-site-key",
     app_action="login",
+    request_id="stable-client-operation-id",
 )
 
 # Или с прокси (поддерживает длинные значения)

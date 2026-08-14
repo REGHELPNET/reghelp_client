@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.1] - 2026-08-14
+
+### Changed
+
+- Documented what `Idempotency-Key` means, when to reuse `request_id`, and how
+  to safely repeat a paid task after an ambiguous network failure.
+
+### Fixed
+
+- Exported `EmailType` from the package root so the documented
+  `from reghelp_client import EmailType` import works.
+
 ## [1.7.0] - 2026-08-14
 
 ### Added

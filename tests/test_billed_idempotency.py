@@ -11,8 +11,7 @@ from uuid import UUID
 import httpx
 
 import reghelp_client
-from reghelp_client import AppDevice, RegHelpClient
-from reghelp_client.models import EmailType
+from reghelp_client import AppDevice, EmailType, RegHelpClient
 
 PAID_CREATE_METHODS = (
     "get_push_token",

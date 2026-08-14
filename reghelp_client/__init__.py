@@ -28,6 +28,7 @@ from .models import (
     BoundIntegrityStatusResponse,
     EmailGetResponse,
     EmailStatusResponse,
+    EmailType,
     IntegrityStatusResponse,
     IntegrityTokenType,
     ProxyConfig,
@@ -41,7 +42,7 @@ from .models import (
     VoipStatusResponse,
 )
 
-__version__ = "1.7.0"
+__version__ = "1.7.1"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
@@ -55,6 +56,7 @@ __all__ = [
     "ProxyType",
     "ProxyConfig",
     "EmailGetResponse",
+    "EmailType",
     "PushStatusResponse",
     "EmailStatusResponse",
     "TurnstileStatusResponse",
