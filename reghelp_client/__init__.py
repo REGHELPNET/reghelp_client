@@ -28,6 +28,7 @@ from .models import (
     BoundIntegrityStatusResponse,
     EmailGetResponse,
     EmailStatusResponse,
+    EmailStockResponse,
     EmailType,
     IntegrityStatusResponse,
     IntegrityTokenType,
@@ -42,7 +43,7 @@ from .models import (
     VoipStatusResponse,
 )
 
-__version__ = "1.7.1"
+__version__ = "1.8.0"
 __all__ = [
     "RegHelpClient",
     "BalanceResponse",
@@ -59,6 +60,7 @@ __all__ = [
     "EmailType",
     "PushStatusResponse",
     "EmailStatusResponse",
+    "EmailStockResponse",
     "TurnstileStatusResponse",
     "RecaptchaMobileStatusResponse",
     "IntegrityStatusResponse",

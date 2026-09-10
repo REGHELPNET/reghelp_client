@@ -38,6 +38,7 @@ from .models import (
     BoundIntegrityStatusResponse,
     EmailGetResponse,
     EmailStatusResponse,
+    EmailStockResponse,
     EmailType,
     IntegrityStatusResponse,
     IntegrityTokenType,
@@ -212,7 +213,7 @@ class RegHelpClient:
                 return RegHelpError("Task not found", status_code=status_code)
         elif error_id == "INVALID_PARAM":
             return InvalidParameterError()
-        elif error_id == "EXTERNAL_ERROR":
+        elif error_id in ("EXTERNAL_ERROR", "UPSTREAM_ERROR"):
             return ExternalServiceError()
         else:
             return RegHelpError(f"Unknown error: {error_id}", status_code=status_code)
@@ -704,6 +705,20 @@ class RegHelpClient:
         return VoipStatusResponse(**data)
 
     # Email operations
+    async def get_email_stock(
+        self, app_name: str, email_type: EmailType
+    ) -> EmailStockResponse:
+        """Read available address count without allocating a task or charging balance.
+
+        ``app_name`` is an application code (e.g. tg, ig, wa) or supported alias.
+        Disabled services raise ServiceDisabledError; unavailable or stale stock
+        raises ExternalServiceError. A successful count of zero is valid.
+        """
+        data = await self._make_request(
+            "/email/getStock", {"appName": app_name, "type": email_type.value}
+        )
+        return EmailStockResponse(**data)
+
     async def get_email(
         self,
         app_name: str,

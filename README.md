@@ -1,7 +1,7 @@
 # REGHelp Python SDK for Push Tokens, CAPTCHA, Play Integrity & Email APIs
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.6.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 REGHelp Python Client is an asynchronous Python SDK for the REGHelp Key API. Use it to integrate mobile testing and automation workflows for iOS and Android push tokens, VoIP push, Cloudflare Turnstile, reCAPTCHA Mobile, Google Play Integrity, iCloud Hide My Email, Gmail OAuth, webhooks, and task status polling.
@@ -118,6 +118,32 @@ method after losing the response, it must retain and pass the original
 This contract applies to `get_push_token`, `get_voip_token`, `get_email`,
 `get_integrity_token`, `get_attestation_token`,
 `get_recaptcha_mobile_token`, and `get_turnstile_token`.
+
+### 🆕 What's new in 1.8.0
+
+Read available email addresses per application with `get_email_stock()`:
+
+```python
+from reghelp_client import EmailType, RegHelpClient
+
+async with RegHelpClient("YOUR_API_KEY") as client:
+    stock = await client.get_email_stock("tg", EmailType.ICLOUD)
+    print(stock.appName, stock.count, stock.updatedAt)
+```
+
+Use `tg` for Telegram, `ig` for Instagram, `wa` for WhatsApp, or another
+configured application code. Supported aliases are resolved by the API;
+`stock.appName` contains the canonical code. `EmailStockResponse` is exported
+from the package root and `updatedAt` is a timezone-aware `datetime`.
+This authenticated `GET /email/getStock` call is free: it creates no task,
+reserves no address and does not debit balance. Stock is a snapshot, refreshed
+about every 30 seconds with an API cache of 10 seconds; it does not guarantee
+that an address will still be available when you allocate it.
+A successful `count=0` means no addresses are currently available.
+Disabled services (currently Gmail) raise `ServiceDisabledError`; missing or
+stale stock raises `ExternalServiceError` (`UPSTREAM_ERROR`).
+
+Upgrade with `python -m pip install --upgrade reghelp-client==1.8.0`.
 
 ### 🆕 What's new in 1.7.1
 
@@ -280,6 +306,19 @@ except NetworkError:
 Контракт действует для `get_push_token`, `get_voip_token`, `get_email`,
 `get_integrity_token`, `get_attestation_token`,
 `get_recaptcha_mobile_token` и `get_turnstile_token`.
+
+### 🆕 Что нового в 1.8.0
+
+`await client.get_email_stock("tg", EmailType.ICLOUD)` возвращает
+`EmailStockResponse` с полями `service`, `appName`, `count`, `updatedAt`, `status`.
+Коды приложений: Telegram — `tg`, Instagram — `ig`, WhatsApp — `wa`.
+Запрос бесплатный, не создаёт задачу и не резервирует адрес. `count=0` —
+корректный остаток; отключённый Gmail возвращает `ServiceDisabledError`,
+недоступные или устаревшие данные — `ExternalServiceError`, а не ноль.
+`updatedAt` содержит время наблюдения в UTC. Обновление остатков — примерно
+раз в 30 секунд, кеш API — 10 секунд. Остаток не гарантирует последующую выдачу.
+
+Обновление: `python -m pip install --upgrade reghelp-client==1.8.0`.
 
 ### 🆕 Что нового в 1.7.1
 

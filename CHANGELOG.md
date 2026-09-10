@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.8.0] - 2026-09-10
+
+### Added
+
+- Async `get_email_stock(app_name, email_type)` for `GET /email/getStock`.
+- Exported `EmailStockResponse` with canonical `appName`, nonnegative `count`,
+  UTC `updatedAt`, `service` and `status`. Reading stock creates no task or charge.
+- English/Russian README examples, upgrade instructions and stock semantics.
+
+### Fixed
+
+- Map `UPSTREAM_ERROR` to `ExternalServiceError` while retaining `EXTERNAL_ERROR`
+  compatibility. Disabled services still raise `ServiceDisabledError`.
+- Synchronized package metadata, public version and README badge at 1.8.0.
+
 ## [1.7.1] - 2026-08-14
 
 ### Changed

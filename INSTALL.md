@@ -1,5 +1,11 @@
 # REGHelp Python Client – Installation & Setup / Установка и настройка
 
+Latest release / Текущий релиз: **1.8.0** (includes email stock / остатки почты).
+
+```bash
+python -m pip install --upgrade reghelp-client==1.8.0
+```
+
 ## 🇬🇧 English
 
 ### 🚀 Quick installation
@@ -392,4 +398,4 @@ pip install --upgrade reghelp-client
 
 ### Миграция с версии 0.x
 
-При обновлении с более старых версий возможны breaking changes. Проверьте CHANGELOG.md для деталей. 
+При обновлении с более старых версий возможны breaking changes. Проверьте CHANGELOG.md для деталей.

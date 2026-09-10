@@ -4,10 +4,12 @@ Data models for the REGHelp Client Library.
 Contains Pydantic models for typing API requests and responses.
 """
 
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
+from typing_extensions import Literal
 
 
 class TaskStatus(str, Enum):
@@ -187,6 +189,16 @@ class PushStatusResponse(BaseStatusResponse):
     """Status of push token task."""
 
     token: Optional[str] = Field(None, description="Push token")
+
+
+class EmailStockResponse(BaseResponse):
+    """Available addresses for an application; reading stock does not reserve any."""
+
+    service: EmailType
+    appName: str = Field(..., description="Canonical application code")
+    count: int = Field(..., ge=0, strict=True, description="Available address count")
+    updatedAt: datetime = Field(..., description="UTC inventory observation timestamp")
+    status: Literal["success"]
 
 
 class EmailGetResponse(BaseResponse):
