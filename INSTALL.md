@@ -1,9 +1,9 @@
 # REGHelp Python Client – Installation & Setup / Установка и настройка
 
-Latest release / Текущий релиз: **1.8.0** (includes email stock / остатки почты).
+Latest release / Текущий релиз: **1.9.0** (status polls survive a temporary HTTP 503 / опрос статуса переживает временный HTTP 503).
 
 ```bash
-python -m pip install --upgrade reghelp-client==1.8.0
+python -m pip install --upgrade reghelp-client==1.9.0
 ```
 
 ## 🇬🇧 English

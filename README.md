@@ -1,7 +1,7 @@
 # REGHelp Python SDK for Push Tokens, CAPTCHA, Play Integrity & Email APIs
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Version](https://img.shields.io/badge/version-1.8.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.9.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 REGHelp Python Client is an asynchronous Python SDK for the REGHelp Key API. Use it to integrate mobile testing and automation workflows for iOS and Android push tokens, VoIP push, Cloudflare Turnstile, reCAPTCHA Mobile, Google Play Integrity, iCloud Hide My Email, Gmail OAuth, webhooks, and task status polling.
@@ -50,7 +50,7 @@ Modern asynchronous Python library for interacting with the REGHelp Key API. It 
 
 * **Asynchronous first** – full `async`/`await` support powered by `httpx`.
 * **Type-safe** – strict typing with Pydantic data models.
-* **Retries with exponential back-off** built-in.
+* **Retries with exponential back-off** built-in; status polls also survive a temporary HTTP 503 and honour `Retry-After`.
 * **Smart rate-limit handling** (provider-configurable).
 * **Async context-manager** for automatic resource management.
 * **Webhook support** out of the box.
@@ -119,7 +119,45 @@ This contract applies to `get_push_token`, `get_voip_token`, `get_email`,
 `get_integrity_token`, `get_attestation_token`,
 `get_recaptcha_mobile_token`, and `get_turnstile_token`.
 
-### 🆕 What's new in 1.8.0
+### 🆕 What's new in 1.9.0
+
+Status polling now survives a temporary HTTP 503. The API answers 503 with a
+`Retry-After` header when it cannot read the task store for a few seconds (for
+example while the database switches its primary node). The task itself keeps
+running, so the SDK no longer treats this as a failure:
+
+* `get_*_status` repeats the request up to `max_retries` times and waits for
+  the server's `Retry-After` (capped at 30 s); without the header it uses the
+  usual exponential back-off.
+* `wait_for_result` keeps polling through a 503 window until its own `timeout`.
+  A single poll, including its retries, never outlives that `timeout`.
+* If the status stays unavailable after all retries, `get_*_status` raises the
+  new `ServiceUnavailableError` (`status_code` 503, `retry_after` in seconds).
+  It is a subclass of `ExternalServiceError`, so existing handlers keep working.
+
+```python
+from reghelp_client import ServiceUnavailableError
+
+try:
+    status = await client.get_push_status(task.id)
+except ServiceUnavailableError as e:
+    # The status could not be read; the task is not lost. Ask again later.
+    await asyncio.sleep(e.retry_after or 2)
+```
+
+What is **not** repeated on 503: a disabled service (`ServiceDisabledError`),
+maintenance mode (`MaintenanceModeError`) and every task-creating call
+(`get_push_token`, `get_email`, …). For those a 503 does not prove the task was
+not created — retry them yourself with the same `request_id`
+(see [Paid task idempotency](#paid-task-idempotency)).
+
+Upgrade note: on `get_*_status` a 503 used to surface as `ExternalServiceError`
+with `status_code` 502. It is now `ServiceUnavailableError` with `status_code`
+503. Code that compares `status_code == 502` for this case needs a change.
+
+Upgrade with `python -m pip install --upgrade reghelp-client==1.9.0`.
+
+### What was new in 1.8.0
 
 Read available email addresses per application with `get_email_stock()`:
 
@@ -264,7 +302,7 @@ if __name__ == "__main__":
 
 - **Асинхронность**: Полная поддержка async/await
 - **Типизация**: Полная типизация с Pydantic моделями
-- **Retry логика**: Автоматические повторы с exponential backoff
+- **Retry логика**: Автоматические повторы с exponential backoff; опрос статуса переживает временный HTTP 503 и учитывает `Retry-After`
 - **Rate limiting**: Умная обработка rate limits (динамические лимиты провайдера)
 - **Context manager**: Поддержка async context manager
 - **Webhook support**: Поддержка webhook уведомлений
@@ -307,7 +345,37 @@ except NetworkError:
 `get_integrity_token`, `get_attestation_token`,
 `get_recaptcha_mobile_token` и `get_turnstile_token`.
 
-### 🆕 Что нового в 1.8.0
+### 🆕 Что нового в 1.9.0
+
+Опрос статуса переживает временный HTTP 503. API отвечает 503 с заголовком
+`Retry-After`, когда несколько секунд не может прочитать хранилище задач
+(например, пока база переключает главный узел). Сама задача при этом
+продолжает выполняться, поэтому SDK больше не считает это отказом:
+
+* `get_*_status` повторяет запрос до `max_retries` раз и ждёт столько, сколько
+  сервер указал в `Retry-After` (не больше 30 секунд); без заголовка —
+  обычная растущая задержка.
+* `wait_for_result` продолжает опрос во время 503 до своего `timeout`. Один
+  опрос вместе с повторами не выходит за этот `timeout`.
+* Если статус остаётся недоступным после всех повторов, `get_*_status`
+  бросает новое исключение `ServiceUnavailableError` (`status_code` 503,
+  `retry_after` в секундах). Это наследник `ExternalServiceError`, старые
+  обработчики продолжают работать.
+
+Не повторяются при 503: отключённый сервис (`ServiceDisabledError`), режим
+обслуживания (`MaintenanceModeError`) и все запросы, создающие задачу
+(`get_push_token`, `get_email` и другие). Для них 503 не доказывает, что задача
+не создана — повторяйте их сами с тем же `request_id`
+(см. «Идемпотентность платных задач»).
+
+При обновлении: раньше 503 на `get_*_status` приходил как
+`ExternalServiceError` с `status_code` 502, теперь это
+`ServiceUnavailableError` с `status_code` 503. Код, который для этого случая
+сравнивает `status_code == 502`, нужно поправить.
+
+Обновление: `python -m pip install --upgrade reghelp-client==1.9.0`.
+
+### Что было нового в 1.8.0
 
 `await client.get_email_stock("tg", EmailType.ICLOUD)` возвращает
 `EmailStockResponse` с полями `service`, `appName`, `count`, `updatedAt`, `status`.
@@ -622,6 +690,11 @@ result = await client.wait_for_result(
 )
 ```
 
+Временный HTTP 503 от API ожидание не прерывает: опрос продолжается до
+`timeout`. По истечении `timeout` бросается `TimeoutError` из
+`reghelp_client.exceptions`; если последним ответом был 503, он лежит в
+`__cause__`.
+
 ### 🪝 Webhook поддержка
 
 ```python
@@ -642,6 +715,7 @@ task = await client.get_push_token(
 from reghelp_client import (
     RegHelpError,
     RateLimitError,
+    ServiceUnavailableError,
     UnauthorizedError,
     TaskNotFoundError,
     NetworkError
@@ -659,7 +733,16 @@ except NetworkError as e:
     print(f"Сетевая ошибка: {e}")
 except RegHelpError as e:
     print(f"API ошибка: {e}")
+
+# Чтение статуса: 503 означает «статус временно не прочитать», задача не потеряна
+try:
+    status = await client.get_push_status(task.id)
+except ServiceUnavailableError as e:
+    await asyncio.sleep(e.retry_after or 2)  # и спросить ещё раз
 ```
+
+`ServiceUnavailableError` — наследник `ExternalServiceError`, поэтому ловите
+его раньше, если эти случаи нужно различать.
 
 ## ⚙️ Конфигурация
 
