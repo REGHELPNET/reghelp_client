@@ -15,6 +15,7 @@ from .exceptions import (
     RateLimitError,
     RegHelpError,
     ServiceDisabledError,
+    ServiceUnavailableError,
     TaskNotFoundError,
     UnauthorizedError,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "RegHelpError",
     "RateLimitError",
     "ServiceDisabledError",
+    "ServiceUnavailableError",
     "MaintenanceModeError",
     "TaskNotFoundError",
     "InvalidParameterError",

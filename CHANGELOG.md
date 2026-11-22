@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- `get_*_status` calls repeat the request on a temporary HTTP 503 (up to
+  `max_retries`, waiting for the server's `Retry-After` when sent, capped at
+  30 s). A disabled service and maintenance mode are not repeated; requests
+  other than `getStatus` are not repeated on 503.
+- `wait_for_result` no longer gives the task up on a temporary 503: it keeps
+  polling until its own `timeout`. A single poll, including its retries, is
+  cut off at that `timeout`.
+- On `get_*_status`, a 503 that used to surface as `ExternalServiceError`
+  (`status_code` 502) or a bare `RegHelpError` (non-JSON body) now surfaces as
+  `ServiceUnavailableError` (`status_code` 503). Catch it before
+  `ExternalServiceError` if the two need different handling.
+
+### Added
+
+- `ServiceUnavailableError` (subclass of `ExternalServiceError`, `status_code`
+  503, `retry_after`) raised when a status read stays unavailable after all
+  retries.
+
 ## [1.8.0] - 2026-09-10
 
 ### Added

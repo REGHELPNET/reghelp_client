@@ -76,6 +76,25 @@ class ExternalServiceError(RegHelpError):
         super().__init__(message, status_code=502)
 
 
+class ServiceUnavailableError(ExternalServiceError):
+    """Exception raised when the API answers HTTP 503 for a temporary reason.
+
+    The task itself is not affected: the status read failed (for example while
+    the task store switches its primary node) and the same request can be
+    repeated. ``retry_after`` holds the server's ``Retry-After`` hint in
+    seconds when one was sent.
+    """
+
+    def __init__(
+        self,
+        message: str = "Service temporarily unavailable",
+        retry_after: Optional[float] = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = 503
+        self.retry_after = retry_after
+
+
 class InsufficientFundsError(RegHelpError):
     """Exception raised when the account balance is too low for a paid request (HTTP 402)."""
 

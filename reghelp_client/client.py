@@ -22,6 +22,7 @@ from .exceptions import (
     RateLimitError,
     RegHelpError,
     ServiceDisabledError,
+    ServiceUnavailableError,
     TaskNotFoundError,
     UnauthorizedError,
 )
@@ -68,6 +69,11 @@ class RegHelpClient:
     DEFAULT_MAX_RETRIES = 3
     DEFAULT_RETRY_DELAY = 1.0
     _PROVIDER_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
+    # Upper bound for a server-sent Retry-After hint, in seconds.
+    MAX_RETRY_AFTER = 30.0
+    # HTTP 503 with one of these ids is a deliberate state, not a transient
+    # failure, so it is never retried.
+    _NON_TRANSIENT_503_IDS = frozenset({"SERVICE_DISABLED", "MAINTENANCE_MODE"})
 
     def __init__(
         self,
@@ -218,6 +224,25 @@ class RegHelpClient:
         else:
             return RegHelpError(f"Unknown error: {error_id}", status_code=status_code)
 
+    @staticmethod
+    def _is_status_poll(endpoint: str, method: str) -> bool:
+        """True for read-only ``.../getStatus`` requests, which are safe to repeat."""
+        return method.upper() == "GET" and endpoint.rstrip("/").endswith("/getStatus")
+
+    @classmethod
+    def _retry_after_seconds(cls, response: httpx.Response) -> Optional[float]:
+        """Parse a ``Retry-After`` header given in seconds; ignore other forms."""
+        raw = response.headers.get("Retry-After")
+        if raw is None:
+            return None
+        try:
+            value = float(raw.strip())
+        except ValueError:
+            return None
+        if value < 0 or value != value:  # negative or NaN
+            return None
+        return min(value, cls.MAX_RETRY_AFTER)
+
     async def _make_request(
         self,
         endpoint: str,
@@ -242,6 +267,12 @@ class RegHelpClient:
         ``Idempotency-Key`` used by paid task-creation endpoints). It is
         preserved verbatim across every retry so an idempotent request keeps
         the same key on a 429/timeout/network re-send.
+
+        HTTP 503 on a ``.../getStatus`` read is treated as temporary (the task
+        store could not be read): the request is repeated up to
+        ``max_retries`` times, waiting for the server's ``Retry-After`` when it
+        is sent, and then surfaces as ``ServiceUnavailableError``. Other
+        endpoints are not repeated on 503.
         """
         url = self._build_url(endpoint)
         request_params = self._build_params(**(params or {}))
@@ -299,6 +330,37 @@ class RegHelpClient:
 
             elif response.status_code == 401:
                 raise UnauthorizedError()
+
+            elif response.status_code == 503 and self._is_status_poll(endpoint, method):
+                error_id = ""
+                try:
+                    error_data = response.json()
+                    if isinstance(error_data, dict):
+                        error_id = str(error_data.get("id") or error_data.get("detail") or "")
+                except ValueError:
+                    pass  # a proxy answered instead of the API; still temporary
+
+                if error_id in self._NON_TRANSIENT_503_IDS:
+                    raise self._map_error_code(error_id, response.status_code, task_id)
+
+                retry_after = self._retry_after_seconds(response)
+                if retry_count < self.max_retries:
+                    delay = (
+                        retry_after
+                        if retry_after is not None
+                        else self.retry_delay * (2**retry_count)
+                    )
+                    await asyncio.sleep(delay)
+                    return await self._make_request(
+                        endpoint,
+                        params,
+                        retry_count + 1,
+                        task_id,
+                        allow_error_status=allow_error_status,
+                        method=method,
+                        headers=headers,
+                    )
+                raise ServiceUnavailableError(retry_after=retry_after)
 
             else:
                 # Try to get error details from response
@@ -1147,6 +1209,9 @@ class RegHelpClient:
         Raises:
             TimeoutError: If task didn't complete within specified time
             RegHelpError: For other errors
+
+        A temporary HTTP 503 from the status endpoint does not end the wait:
+        polling continues until ``timeout``.
         """
         start_time = asyncio.get_event_loop().time()
 
@@ -1165,12 +1230,36 @@ class RegHelpClient:
         if not method:
             raise InvalidParameterError(f"Unknown service: {service}")
 
+        last_unavailable: Optional[ServiceUnavailableError] = None
+
         while True:
             current_time = asyncio.get_event_loop().time()
             if current_time - start_time > timeout:
-                raise RegHelpTimeoutError(timeout)
+                # Chain the last 503 so the caller can tell "task is slow"
+                # from "status could not be read".
+                raise RegHelpTimeoutError(timeout) from last_unavailable
 
-            status_response = await method(task_id)
+            # One poll may itself repeat a 503 and wait for Retry-After, so it
+            # is bounded by what is left of the caller's timeout.
+            remaining = timeout - (current_time - start_time)
+            try:
+                status_response = await asyncio.wait_for(
+                    method(task_id), timeout=max(remaining, 0.001)
+                )
+            except asyncio.TimeoutError:
+                raise RegHelpTimeoutError(timeout) from last_unavailable
+            except ServiceUnavailableError as e:
+                # The status read failed, the task did not: keep polling until
+                # the caller's own deadline instead of giving the task up.
+                last_unavailable = e
+                pause = max(poll_interval, e.retry_after or 0.0)
+                remaining = timeout - (asyncio.get_event_loop().time() - start_time)
+                if remaining <= 0:
+                    raise RegHelpTimeoutError(timeout) from e
+                await asyncio.sleep(min(pause, remaining))
+                continue
+
+            last_unavailable = None
 
             if status_response.status in {TaskStatus.DONE, TaskStatus.ERROR}:
                 return cast(
